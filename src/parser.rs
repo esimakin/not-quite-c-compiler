@@ -125,7 +125,7 @@ fn parse_statements(tokens: &mut Vec<Token>) -> Result<Vec<Box<dyn Node>>, &'sta
 fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Node>, &'static str> {
     match tokens.pop() {
         Some(tok) => match tok {
-            Token::IntLiteral(n) => return Ok(Box::new(IntExpression { val: n })),
+            Token::ConstInt(n) => return Ok(Box::new(IntExpression { val: n })),
             _ => return Err("err 14"),
         },
         None => return Err("err 15"),
