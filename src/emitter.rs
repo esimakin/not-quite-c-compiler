@@ -1,6 +1,6 @@
 use parser::*;
 
-impl Node for ReturnStatement {
+impl Statement for ReturnStatement {
     fn visit(&self) -> String {
         let mut val = String::from("");
         val.push_str("  movl $");
@@ -12,7 +12,7 @@ impl Node for ReturnStatement {
     }
 }
 
-impl Node for MainFunction {
+impl Statement for Function {
     fn visit(&self) -> String {
         let mut val = String::from("  .text\n");
         val.push_str("  .globl  main\n");
@@ -25,7 +25,7 @@ impl Node for MainFunction {
     }
 }
 
-impl Node for IntExpression {
+impl Expression for IntExpression {
     fn visit(&self) -> String {
         String::from(self.val.to_string())
     }
@@ -33,6 +33,8 @@ impl Node for IntExpression {
 
 pub fn emit(program: Program) -> Result<String, &'static str> {
     let mut asm = String::from("");
-    asm.push_str(&program.main.visit());
+    for stmt in &program.statements {
+        asm.push_str(&stmt.visit());
+    }
     return Ok(asm);
 }

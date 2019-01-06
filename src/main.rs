@@ -9,7 +9,6 @@ use std::process;
 
 fn compile(contents: &String) -> Result<String, &'static str> {
     let mut tokens = lexer::tokenize(&contents);
-    tokens.reverse();
     let program = parser::parse(tokens)?;
     let code = emitter::emit(program)?;
     Ok(code)

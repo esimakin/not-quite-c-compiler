@@ -9,6 +9,9 @@ pub enum Token {
     ReturnKeyword,
     Identifier(String),
     ConstInt(u32),
+    Negation,
+    BitwiseComplement,
+    LogicalNegation,
 }
 
 pub fn tokenize(contents: &str) -> Vec<Token> {
@@ -23,6 +26,9 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
             '(' => tokens.push(Token::OpenParenthesis),
             ')' => tokens.push(Token::CloseParenthesis),
             ';' => tokens.push(Token::Semicolon),
+            '-' => tokens.push(Token::Negation),
+            '!' => tokens.push(Token::LogicalNegation),
+            '~' => tokens.push(Token::BitwiseComplement),
             ch => {
                 if ch.is_numeric() {
                     let mut num_chars: Vec<char> = Vec::new();
@@ -127,6 +133,26 @@ mod tests {
             Token::OpenBrace,
             Token::ReturnKeyword,
             Token::ConstInt(100),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn tokenize_unary_ops() {
+        let result = tokenize("int main() { return !~-4; }");
+        let expected: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::LogicalNegation,
+            Token::BitwiseComplement,
+            Token::Negation,
+            Token::ConstInt(4),
             Token::Semicolon,
             Token::CloseBrace,
         ];
