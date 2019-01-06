@@ -158,4 +158,37 @@ mod tests {
         ];
         assert_eq!(result, expected);
     }
+
+    #[test]
+    fn tokenize_no_space_at_retval() {
+        let result = tokenize("int main() { return0; }");
+        let expected: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::Identifier(String::from("return0")),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn tokenize_return_uppercase() {
+        let result = tokenize("int main() { RETURN 3; }");
+        let expected: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::Identifier(String::from("RETURN")),
+            Token::ConstInt(3),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        assert_eq!(result, expected);
+    }
 }

@@ -3,9 +3,7 @@ use parser::*;
 impl Statement for ReturnStatement {
     fn visit(&self) -> String {
         let mut val = String::from("");
-        val.push_str("  movl $");
         val.push_str(&self.expression.visit());
-        val.push_str(", %eax\n");
         val.push_str("  ret\n");
         val.push_str("\n");
         val
@@ -27,7 +25,32 @@ impl Statement for Function {
 
 impl Expression for IntExpression {
     fn visit(&self) -> String {
-        String::from(self.val.to_string())
+        let mut val = String::from("");
+        val.push_str("  movl $");
+        val.push_str(&self.val.to_string());
+        val.push_str(", %eax\n");
+        val
+    }
+}
+
+impl Expression for UnaryOp {
+    fn visit(&self) -> String {
+        let mut val = String::from("");
+        val.push_str(&self.expression.visit());
+        match self.unary_op_type {
+            UnaryOpType::Negation => {
+                val.push_str("  neg %eax\n");
+            }
+            UnaryOpType::Complement => {
+                val.push_str("  not %eax\n");
+            }
+            UnaryOpType::LogicalNegation => {
+                val.push_str("  cmpl $0, %eax\n");
+                val.push_str("  movl $0, %eax\n");
+                val.push_str("  sete %al\n");
+            }
+        };
+        val
     }
 }
 

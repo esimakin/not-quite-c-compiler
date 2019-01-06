@@ -122,7 +122,6 @@ fn parse_statements(
 }
 
 fn parse_one_statement(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'static str> {
-    println!("parse one stmt");
     let stmt_result: Result<Box<dyn Statement>, &'static str> = match tokens.pop() {
         Some(t) => match t {
             Token::ReturnKeyword => Ok(Box::new(ReturnStatement {
@@ -140,10 +139,7 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'
     match tokens.pop() {
         Some(t) => match t {
             Token::Semicolon => stmt_result,
-            t => {
-                eprintln!("{:?}", t);
-                Err("(;) expected")
-            }
+            _ => Err("(;) expected"),
         },
         None => stmt_result,
     }
@@ -153,11 +149,34 @@ fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'st
     match tokens.pop() {
         Some(tok) => match tok {
             Token::ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
-            _ => Err("err 14"),
+            Token::Negation => {
+                let expr = parse_expression(tokens)?;
+                Ok(Box::new(UnaryOp {
+                    unary_op_type: UnaryOpType::Negation,
+                    expression: expr,
+                }))
+            }
+            Token::BitwiseComplement => {
+                let expr = parse_expression(tokens)?;
+                Ok(Box::new(UnaryOp {
+                    unary_op_type: UnaryOpType::Complement,
+                    expression: expr,
+                }))
+            }
+            Token::LogicalNegation => {
+                let expr = parse_expression(tokens)?;
+                Ok(Box::new(UnaryOp {
+                    unary_op_type: UnaryOpType::LogicalNegation,
+                    expression: expr,
+                }))
+            }
+            _ => Err("Expression syntax error"),
         },
-        None => Err("err 15"),
+        None => Err("Unexpected end of expression"),
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
 mod tests {
@@ -261,7 +280,35 @@ mod tests {
     }
 
     #[test]
-    fn lex_and_parse_no_space_at_retval() {
+    #[should_panic]
+    fn parse_no_space_at_retval() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::Identifier(String::from("return0")),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        parse(tokens).unwrap();
+    }
 
+    #[test]
+    #[should_panic]
+    fn parse_return_uppercase() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::Identifier(String::from("RETURN")),
+            Token::ConstInt(3),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        parse(tokens).unwrap();
     }
 }
