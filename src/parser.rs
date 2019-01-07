@@ -28,9 +28,22 @@ pub enum UnaryOpType {
     LogicalNegation,
 }
 
+pub enum BinOpType {
+    Addition,
+    Multiplication,
+    Substraction,
+    Division,
+}
+
 pub struct UnaryOp {
     pub unary_op_type: UnaryOpType,
     pub expression: Box<dyn Expression>,
+}
+
+pub struct BinaryOp {
+    pub bin_op_type: BinOpType,
+    pub left: Box<dyn Expression>,
+    pub right: Box<dyn Expression>,
 }
 
 pub struct Program {
@@ -41,7 +54,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     let mut tokens = tokens;
     tokens.reverse();
     Ok(Program {
-        statements: parse_statements(&mut tokens, true)?,
+        statements: parse_stmts(&mut tokens, true)?,
     })
 }
 
@@ -70,7 +83,7 @@ fn parse_function(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'stati
 
     let stms = match tokens.pop() {
         Some(t) => match t {
-            Token::OpenBrace => parse_statements(tokens, false)?,
+            Token::OpenBrace => parse_stmts(tokens, false)?,
             _ => return Err("Function body syntax error"),
         },
         _ => Vec::new(),
@@ -86,15 +99,14 @@ fn parse_function(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'stati
 fn parse_function_params(tokens: &mut Vec<Token>) -> Result<Vec<Box<dyn Statement>>, &'static str> {
     match tokens.pop() {
         Some(t) => match t {
-            Token::CloseParenthesis => (), // ok, quit
-            _ => return Err("Wrong function parameters syntax"),
+            Token::CloseParenthesis => Ok(Vec::new()), // ok, quit
+            _ => Err("Wrong function parameters syntax"),
         },
-        _ => return Err("Unexpected end of function parameters definition"),
+        _ => Err("Unexpected end of function parameters definition"),
     }
-    Ok(Vec::new())
 }
 
-fn parse_statements(
+fn parse_stmts(
     tokens: &mut Vec<Token>,
     global: bool,
 ) -> Result<Vec<Box<dyn Statement>>, &'static str> {
@@ -146,29 +158,97 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'
 }
 
 fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
+    let mut term = parse_term(tokens)?;
+    loop {
+        let tok = tokens.pop();
+        if tok.is_some() {
+            let tok = tok.unwrap();
+            if tok == Token::Addition || tok == Token::Negation {
+                let bin_op = token_to_bin_op_type(&tok)?;
+                let next_term = parse_factor(tokens)?;
+                term = Box::new(BinaryOp {
+                    bin_op_type: bin_op,
+                    left: term,
+                    right: next_term,
+                });
+            } else {
+                tokens.push(tok);
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    Ok(term)
+}
+
+fn parse_term(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
+    let mut factor = parse_factor(tokens)?;
+    loop {
+        let tok = tokens.pop();
+        if tok.is_some() {
+            let tok = tok.unwrap();
+            if tok == Token::Multiplication || tok == Token::Division {
+                let bin_op = token_to_bin_op_type(&tok)?;
+                let next_factor = parse_factor(tokens)?;
+                factor = Box::new(BinaryOp {
+                    bin_op_type: bin_op,
+                    left: factor,
+                    right: next_factor,
+                });
+            } else {
+                tokens.push(tok);
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    Ok(factor)
+}
+
+fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
+    match token {
+        &Token::Addition => Ok(BinOpType::Addition),
+        &Token::Multiplication => Ok(BinOpType::Multiplication),
+        &Token::Negation => Ok(BinOpType::Substraction),
+        &Token::Division => Ok(BinOpType::Division),
+        _ => Err("Unknown binary operation"),
+    }
+}
+
+fn token_to_unary_op_type(token: &Token) -> Result<UnaryOpType, &'static str> {
+    match token {
+        &Token::BitwiseComplement => Ok(UnaryOpType::Complement),
+        &Token::Negation => Ok(UnaryOpType::Negation),
+        &Token::LogicalNegation => Ok(UnaryOpType::LogicalNegation),
+        _ => Err("Unknown unary operator"),
+    }
+}
+
+fn parse_factor(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
     match tokens.pop() {
         Some(tok) => match tok {
             Token::ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
-            Token::Negation => {
-                let expr = parse_expression(tokens)?;
+            Token::Negation | Token::BitwiseComplement | Token::LogicalNegation => {
+                let expr = parse_factor(tokens)?;
                 Ok(Box::new(UnaryOp {
-                    unary_op_type: UnaryOpType::Negation,
+                    unary_op_type: token_to_unary_op_type(&tok)?,
                     expression: expr,
                 }))
             }
-            Token::BitwiseComplement => {
+            Token::OpenParenthesis => {
                 let expr = parse_expression(tokens)?;
-                Ok(Box::new(UnaryOp {
-                    unary_op_type: UnaryOpType::Complement,
-                    expression: expr,
-                }))
-            }
-            Token::LogicalNegation => {
-                let expr = parse_expression(tokens)?;
-                Ok(Box::new(UnaryOp {
-                    unary_op_type: UnaryOpType::LogicalNegation,
-                    expression: expr,
-                }))
+                match tokens.pop() {
+                    Some(tok) => {
+                        if tok == Token::CloseParenthesis {
+                            Ok(expr)
+                        } else {
+                            Err("Missing parenthesis (unexpected token)")
+                        }
+                    }
+                    None => Err("Missing parenthesis (unexpected end of stream)"),
+                }
             }
             _ => Err("Expression syntax error"),
         },
@@ -178,6 +258,7 @@ fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'st
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO: add tree inspecting tests
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -54,6 +54,12 @@ impl Expression for UnaryOp {
     }
 }
 
+impl Expression for BinaryOp {
+    fn visit(&self) -> String {
+        String::from("")
+    }
+}
+
 pub fn emit(program: Program) -> Result<String, &'static str> {
     let mut asm = String::from("");
     for stmt in &program.statements {

@@ -12,13 +12,15 @@ pub enum Token {
     Negation,
     BitwiseComplement,
     LogicalNegation,
+    Addition,
+    Multiplication,
+    Division,
 }
 
 pub fn tokenize(contents: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
-    let mut chars: Vec<char> = contents.chars().collect();
-    chars.reverse();
-    let mut curr_char_opt = chars.pop();
+    let mut chars = contents.chars().peekable();
+    let mut curr_char_opt = chars.next();
     while curr_char_opt.is_some() {
         match curr_char_opt.unwrap() {
             '{' => tokens.push(Token::OpenBrace),
@@ -29,20 +31,21 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
             '-' => tokens.push(Token::Negation),
             '!' => tokens.push(Token::LogicalNegation),
             '~' => tokens.push(Token::BitwiseComplement),
+            '+' => tokens.push(Token::Addition),
+            '*' => tokens.push(Token::Multiplication),
+            '/' => tokens.push(Token::Division),
             ch => {
                 if ch.is_numeric() {
                     let mut num_chars: Vec<char> = Vec::new();
                     num_chars.push(ch);
-                    let mut opt = chars.pop();
-                    while opt.is_some() {
-                        let some_ch = opt.unwrap();
-                        if some_ch.is_numeric() {
-                            num_chars.push(some_ch);
-                        } else {
-                            chars.push(some_ch);
-                            break;
+                    loop {
+                        {
+                            let opt = chars.peek();
+                            if opt.is_none() || !opt.unwrap().is_numeric() {
+                                break;
+                            }
                         }
-                        opt = chars.pop();
+                        num_chars.push(chars.next().unwrap());
                     }
                     let int_val: String = num_chars.into_iter().collect();
                     match int_val.parse::<u32>() {
@@ -56,16 +59,14 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
                 } else if ch.is_alphabetic() {
                     let mut some_chars: Vec<char> = Vec::new();
                     some_chars.push(ch);
-                    let mut opt = chars.pop();
-                    while opt.is_some() {
-                        let some_ch = opt.unwrap();
-                        if some_ch.is_alphanumeric() {
-                            some_chars.push(some_ch);
-                        } else {
-                            chars.push(some_ch);
-                            break;
+                    loop {
+                        {
+                            let opt = chars.peek();
+                            if opt.is_none() || !opt.unwrap().is_alphanumeric() {
+                                break;
+                            }
                         }
-                        opt = chars.pop();
+                        some_chars.push(chars.next().unwrap());
                     }
                     let keyword_or_identifier: String = some_chars.into_iter().collect();
                     if keyword_or_identifier.eq("int") {
@@ -78,7 +79,7 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
                 }
             }
         }
-        curr_char_opt = chars.pop();
+        curr_char_opt = chars.next();
     }
     return tokens;
 }
