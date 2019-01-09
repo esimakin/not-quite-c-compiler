@@ -8,6 +8,12 @@ impl Statement for ReturnStatement {
         val.push_str("\n");
         val
     }
+    fn to_string(&self) -> String {
+        let mut val = String::from("ReturnStatement[");
+        val.push_str(&self.expression.to_string());
+        val.push_str("]");
+        val
+    }
 }
 
 impl Statement for Function {
@@ -21,6 +27,15 @@ impl Statement for Function {
         }
         val
     }
+    fn to_string(&self) -> String {
+        let mut val = String::from("Function[");
+        for stmt in self.statements.iter() {
+            val.push_str(&stmt.to_string());
+            val.push_str(" ");
+        }
+        val.push_str("]");
+        val
+    }
 }
 
 impl Expression for IntExpression {
@@ -29,6 +44,12 @@ impl Expression for IntExpression {
         val.push_str("  movl $");
         val.push_str(&self.val.to_string());
         val.push_str(", %eax\n");
+        val
+    }
+    fn to_string(&self) -> String {
+        let mut val = String::from("IntExpressioin[");
+        val.push_str(&self.val.to_string());
+        val.push_str("]");
         val
     }
 }
@@ -52,11 +73,57 @@ impl Expression for UnaryOp {
         };
         val
     }
+    fn to_string(&self) -> String {
+        let mut val = String::from("UnaryOp[");
+        val.push_str(self.unary_op_type.to_string());
+        val.push_str("]");
+        val
+    }
+}
+
+impl UnaryOpType {
+    fn to_string(&self) -> &'static str {
+        match self {
+            UnaryOpType::Complement => "~",
+            UnaryOpType::Negation => "-",
+            UnaryOpType::LogicalNegation => "!",
+        }
+    }
+}
+
+impl BinOpType {
+    fn to_string(&self) -> &'static str {
+        match self {
+            BinOpType::Addition => "+",
+            BinOpType::Multiplication => "*",
+            BinOpType::Substraction => "-",
+            BinOpType::Division => "/",
+        }
+    }
+}
+
+impl Program {
+    pub fn to_string(&self) -> String {
+        let mut val = String::from("Program[");
+        for stmt in self.statements.iter() {
+            val.push_str(&stmt.to_string());
+        }
+        val.push_str("]");
+        val
+    }
 }
 
 impl Expression for BinaryOp {
     fn visit(&self) -> String {
         String::from("")
+    }
+    fn to_string(&self) -> String {
+        let mut val = String::from("BinaryOp[");
+        val.push_str(&self.left.to_string());
+        val.push_str(self.bin_op_type.to_string());
+        val.push_str(&self.right.to_string());
+        val.push_str("]");
+        val
     }
 }
 
