@@ -167,7 +167,7 @@ fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'st
             let tok = tok.unwrap();
             if tok == Token::Addition || tok == Token::Negation {
                 let bin_op = token_to_bin_op_type(&tok)?;
-                let next_term = parse_factor(tokens)?;
+                let next_term = parse_term(tokens)?;
                 term = Box::new(BinaryOp {
                     bin_op_type: bin_op,
                     left: term,
@@ -364,6 +364,161 @@ mod tests {
             })],
         };
         assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parse_unary_and_binary_ops_precedence() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::BitwiseComplement,
+            Token::ConstInt(2),
+            Token::Addition,
+            Token::ConstInt(3),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let result = parse(tokens).unwrap();
+        let expected = Program {
+            statements: vec![Box::new(Function {
+                name: String::from("main"),
+                params: Vec::new(),
+                statements: vec![Box::new(ReturnStatement {
+                    expression: Box::new(BinaryOp {
+                        bin_op_type: BinOpType::Addition,
+                        left: Box::new(UnaryOp {
+                            unary_op_type: UnaryOpType::Complement,
+                            expression: Box::new(IntExpression { val: 2 }),
+                        }),
+                        right: Box::new(IntExpression { val: 3 }),
+                    }),
+                })],
+            })],
+        };
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parse_unary_and_binary_ops_precedence_parens() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::BitwiseComplement,
+            Token::OpenParenthesis,
+            Token::ConstInt(2),
+            Token::Addition,
+            Token::ConstInt(3),
+            Token::CloseParenthesis,
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let result = parse(tokens).unwrap();
+        let expected = Program {
+            statements: vec![Box::new(Function {
+                name: String::from("main"),
+                params: Vec::new(),
+                statements: vec![Box::new(ReturnStatement {
+                    expression: Box::new(UnaryOp {
+                        unary_op_type: UnaryOpType::Complement,
+                        expression: Box::new(BinaryOp {
+                            bin_op_type: BinOpType::Addition,
+                            left: Box::new(IntExpression { val: 2 }),
+                            right: Box::new(IntExpression { val: 3 }),
+                        }),
+                    }),
+                })],
+            })],
+        };
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parse_binary_ops_paren_precedence() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::OpenParenthesis,
+            Token::ConstInt(2),
+            Token::Addition,
+            Token::ConstInt(3),
+            Token::CloseParenthesis,
+            Token::Multiplication,
+            Token::ConstInt(4),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let result = parse(tokens).unwrap();
+        let expected = Program {
+            statements: vec![Box::new(Function {
+                name: String::from("main"),
+                params: Vec::new(),
+                statements: vec![Box::new(ReturnStatement {
+                    expression: Box::new(BinaryOp {
+                        bin_op_type: BinOpType::Multiplication,
+                        left: Box::new(BinaryOp {
+                            bin_op_type: BinOpType::Addition,
+                            left: Box::new(IntExpression { val: 2 }),
+                            right: Box::new(IntExpression { val: 3 }),
+                        }),
+                        right: Box::new(IntExpression { val: 4 }),
+                    }),
+                })],
+            })],
+        };
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parse_binary_ops_paren_same_precedence() {
+        let tokens_paren: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::OpenParenthesis,
+            Token::ConstInt(2),
+            Token::Addition,
+            Token::OpenParenthesis,
+            Token::ConstInt(3),
+            Token::Multiplication,
+            Token::ConstInt(4),
+            Token::CloseParenthesis,
+            Token::CloseParenthesis,
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::ConstInt(2),
+            Token::Addition,
+            Token::ConstInt(3),
+            Token::Multiplication,
+            Token::ConstInt(4),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let result_paren = parse(tokens_paren).unwrap();
+        let result = parse(tokens).unwrap();
+        assert_eq!(result_paren.to_string(), result.to_string());
     }
 
     #[test]
