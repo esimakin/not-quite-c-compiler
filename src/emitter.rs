@@ -81,6 +81,54 @@ impl Expression for UnaryOp {
     }
 }
 
+impl Expression for BinaryOp {
+    fn visit(&self) -> String {
+        let mut val = String::from("");
+        match self.bin_op_type {
+            BinOpType::Addition => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  pop %ecx\n");
+                val.push_str("  addl %ecx, %eax\n");
+            },
+            BinOpType::Multiplication => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  pop %ecx\n");
+                val.push_str("  imul %ecx, %eax\n");
+            },
+            BinOpType::Substraction => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  movl %eax, %ecx\n");
+                val.push_str("  pop %eax\n");
+                val.push_str("  subl %ecx, %eax\n");
+            },
+            BinOpType::Division => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  movl %eax, %ecx\n");
+                val.push_str("  pop %eax\n");
+                val.push_str("  movl $0, %edx\n");
+                val.push_str("  idivl %ecx\n");
+            }
+        };
+        val
+    }
+    fn to_string(&self) -> String {
+        let mut val = String::from("BinaryOp[");
+        val.push_str(&self.left.to_string());
+        val.push_str(self.bin_op_type.to_string());
+        val.push_str(&self.right.to_string());
+        val.push_str("]");
+        val
+    }
+}
+
 impl UnaryOpType {
     fn to_string(&self) -> &'static str {
         match self {
@@ -103,25 +151,12 @@ impl BinOpType {
 }
 
 impl Program {
+    #[allow(dead_code)]
     pub fn to_string(&self) -> String {
         let mut val = String::from("Program[");
         for stmt in self.statements.iter() {
             val.push_str(&stmt.to_string());
         }
-        val.push_str("]");
-        val
-    }
-}
-
-impl Expression for BinaryOp {
-    fn visit(&self) -> String {
-        String::from("")
-    }
-    fn to_string(&self) -> String {
-        let mut val = String::from("BinaryOp[");
-        val.push_str(&self.left.to_string());
-        val.push_str(self.bin_op_type.to_string());
-        val.push_str(&self.right.to_string());
         val.push_str("]");
         val
     }
