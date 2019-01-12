@@ -25,5 +25,6 @@ do
         echo "Testing $file ...ok"
     else
         echo "Testing $file ...FAILED"
+        exit 1
     fi 
 done
