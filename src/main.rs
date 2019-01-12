@@ -50,7 +50,7 @@ fn main() {
     };
 
     match file.write_all(contents.as_bytes()) {
-        Ok(_) => println!("Finished!"),
+        Ok(_) => (),
         Err(e) => {
             eprintln!("Error writing output file: {}", e);
             process::exit(4);
