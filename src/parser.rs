@@ -60,7 +60,11 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     })
 }
 
-fn parse_function(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'static str> {
+type StatementResult = Result<Box<dyn Statement>, &'static str>;
+type StatementsResult = Result<Vec<Box<dyn Statement>>, &'static str>;
+type ExpressionResult = Result<Box<dyn Expression>, &'static str>;
+
+fn parse_function(tokens: &mut Vec<Token>) -> StatementResult {
     let f_name = match tokens.pop() {
         Some(t) => match t {
             Token::IntKeyword => match tokens.pop() {
@@ -98,7 +102,7 @@ fn parse_function(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'stati
     }))
 }
 
-fn parse_function_params(tokens: &mut Vec<Token>) -> Result<Vec<Box<dyn Statement>>, &'static str> {
+fn parse_function_params(tokens: &mut Vec<Token>) -> StatementsResult {
     match tokens.pop() {
         Some(t) => match t {
             Token::CloseParenthesis => Ok(Vec::new()), // ok, quit
@@ -108,10 +112,7 @@ fn parse_function_params(tokens: &mut Vec<Token>) -> Result<Vec<Box<dyn Statemen
     }
 }
 
-fn parse_stmts(
-    tokens: &mut Vec<Token>,
-    global: bool,
-) -> Result<Vec<Box<dyn Statement>>, &'static str> {
+fn parse_stmts(tokens: &mut Vec<Token>, global: bool) -> StatementsResult {
     let mut statements: Vec<Box<dyn Statement>> = Vec::new();
     loop {
         match tokens.pop() {
@@ -135,8 +136,8 @@ fn parse_stmts(
     Ok(statements)
 }
 
-fn parse_one_statement(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'static str> {
-    let stmt_result: Result<Box<dyn Statement>, &'static str> = match tokens.pop() {
+fn parse_one_statement(tokens: &mut Vec<Token>) -> StatementResult {
+    let stmt_result: StatementResult = match tokens.pop() {
         Some(t) => match t {
             Token::ReturnKeyword => Ok(Box::new(ReturnStatement {
                 expression: parse_expression(tokens)?,
@@ -159,7 +160,7 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> Result<Box<dyn Statement>, &'
     }
 }
 
-fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
+fn parse_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
     let mut term = parse_term(tokens)?;
     loop {
         let tok = tokens.pop();
@@ -184,7 +185,7 @@ fn parse_expression(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'st
     Ok(term)
 }
 
-fn parse_term(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
+fn parse_term(tokens: &mut Vec<Token>) -> ExpressionResult {
     let mut factor = parse_factor(tokens)?;
     loop {
         let tok = tokens.pop();
@@ -228,7 +229,7 @@ fn token_to_unary_op_type(token: &Token) -> Result<UnaryOpType, &'static str> {
     }
 }
 
-fn parse_factor(tokens: &mut Vec<Token>) -> Result<Box<dyn Expression>, &'static str> {
+fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
     match tokens.pop() {
         Some(tok) => match tok {
             Token::ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
