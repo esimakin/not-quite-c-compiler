@@ -161,43 +161,27 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> StatementResult {
 }
 
 fn parse_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
-    let mut term = parse_term(tokens)?;
-    loop {
-        let tok = tokens.pop();
-        if tok.is_some() {
-            let tok = tok.unwrap();
-            if tok == Token::Addition || tok == Token::Negation {
-                let bin_op = token_to_bin_op_type(&tok)?;
-                let next_term = parse_term(tokens)?;
-                term = Box::new(BinaryOp {
-                    bin_op_type: bin_op,
-                    left: term,
-                    right: next_term,
-                });
-            } else {
-                tokens.push(tok);
-                break;
-            }
-        } else {
-            break;
-        }
-    }
-    Ok(term)
+    parse_rule(tokens, parse_term, |token: &Token| token == &Token::Addition || token == &Token::Negation)
 }
 
 fn parse_term(tokens: &mut Vec<Token>) -> ExpressionResult {
-    let mut factor = parse_factor(tokens)?;
+    parse_rule(tokens, parse_factor, |token: &Token| token == &Token::Multiplication || token == &Token::Division)
+}
+
+fn parse_rule<F, P>(tokens: &mut Vec<Token>, parse_one: F, predicate: P) -> ExpressionResult
+where F: Fn(&mut Vec<Token>) -> ExpressionResult, P: Fn(&Token) -> bool {
+    let mut first = parse_one(tokens)?;
     loop {
         let tok = tokens.pop();
         if tok.is_some() {
             let tok = tok.unwrap();
-            if tok == Token::Multiplication || tok == Token::Division {
+            if predicate(&tok) {
                 let bin_op = token_to_bin_op_type(&tok)?;
-                let next_factor = parse_factor(tokens)?;
-                factor = Box::new(BinaryOp {
+                let next = parse_one(tokens)?;
+                first = Box::new(BinaryOp {
                     bin_op_type: bin_op,
-                    left: factor,
-                    right: next_factor,
+                    left: first,
+                    right: next,
                 });
             } else {
                 tokens.push(tok);
@@ -207,7 +191,7 @@ fn parse_term(tokens: &mut Vec<Token>) -> ExpressionResult {
             break;
         }
     }
-    Ok(factor)
+    Ok(first)
 }
 
 fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
