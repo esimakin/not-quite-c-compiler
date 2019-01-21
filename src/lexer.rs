@@ -29,9 +29,11 @@ pub enum Token {
     LessOrEqual,
     GreaterThan,
     GreaterOrEqual,
+    Assignment,
 }
 
 use std::fmt;
+use self::Token::*;
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -45,18 +47,18 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
     let mut curr_char_opt = chars.next();
     while curr_char_opt.is_some() {
         match curr_char_opt.unwrap() {
-            '{' => tokens.push(Token::OpenBrace),
-            '}' => tokens.push(Token::CloseBrace),
-            '(' => tokens.push(Token::OpenParenthesis),
-            ')' => tokens.push(Token::CloseParenthesis),
-            ';' => tokens.push(Token::Semicolon),
-            '-' => tokens.push(Token::Negation),
-            '^' => tokens.push(Token::BitwiseXor),
-            '%' => tokens.push(Token::Modulo),
-            '~' => tokens.push(Token::BitwiseComplement),
-            '+' => tokens.push(Token::Addition),
-            '*' => tokens.push(Token::Multiplication),
-            '/' => tokens.push(Token::Division),
+            '{' => tokens.push(OpenBrace),
+            '}' => tokens.push(CloseBrace),
+            '(' => tokens.push(OpenParenthesis),
+            ')' => tokens.push(CloseParenthesis),
+            ';' => tokens.push(Semicolon),
+            '-' => tokens.push(Negation),
+            '^' => tokens.push(BitwiseXor),
+            '%' => tokens.push(Modulo),
+            '~' => tokens.push(BitwiseComplement),
+            '+' => tokens.push(Addition),
+            '*' => tokens.push(Multiplication),
+            '/' => tokens.push(Division),
             ch => {
                 if ch.is_numeric() {
                     let mut num_chars: Vec<char> = Vec::new();
@@ -73,10 +75,10 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
                     let int_val: String = num_chars.into_iter().collect();
                     match int_val.parse::<u32>() {
                         Ok(n) => {
-                            tokens.push(Token::ConstInt(n));
+                            tokens.push(ConstInt(n));
                         }
                         Err(_) => {
-                            tokens.push(Token::Identifier(int_val));
+                            tokens.push(Identifier(int_val));
                         }
                     };
                 } else if ch.is_alphabetic() {
@@ -93,11 +95,11 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
                     }
                     let keyword_or_identifier: String = some_chars.into_iter().collect();
                     if keyword_or_identifier.eq("int") {
-                        tokens.push(Token::IntKeyword);
+                        tokens.push(IntKeyword);
                     } else if keyword_or_identifier.eq("return") {
-                        tokens.push(Token::ReturnKeyword);
+                        tokens.push(ReturnKeyword);
                     } else {
-                        tokens.push(Token::Identifier(keyword_or_identifier));
+                        tokens.push(Identifier(keyword_or_identifier));
                     }
                 } else if ch == '<' || ch == '>' || ch == '=' || ch == '|' || ch == '&' || ch == '!'
                 {
@@ -107,53 +109,53 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
                         match ch {
                             '<' => match peek {
                                 Some(&'=') => {
-                                    tokens.push(Token::LessOrEqual);
+                                    tokens.push(LessOrEqual);
                                     skip = true;
                                 }
                                 Some(&'<') => {
-                                    tokens.push(Token::BitwiseShiftLeft);
+                                    tokens.push(BitwiseShiftLeft);
                                     skip = true;
                                 }
-                                _ => tokens.push(Token::LessThan),
+                                _ => tokens.push(LessThan),
                             },
                             '>' => match peek {
                                 Some(&'=') => {
-                                    tokens.push(Token::GreaterOrEqual);
+                                    tokens.push(GreaterOrEqual);
                                     skip = true;
                                 }
                                 Some(&'>') => {
-                                    tokens.push(Token::BitwiseShiftRight);
+                                    tokens.push(BitwiseShiftRight);
                                     skip = true;
                                 }
-                                _ => tokens.push(Token::GreaterThan),
+                                _ => tokens.push(GreaterThan),
                             },
                             '=' => match peek {
                                 Some(&'=') => {
-                                    tokens.push(Token::Equal);
+                                    tokens.push(Equal);
                                     skip = true;
                                 }
-                                _ => (),
+                                _ => tokens.push(Assignment),
                             },
                             '|' => match peek {
                                 Some(&'|') => {
-                                    tokens.push(Token::Or);
+                                    tokens.push(Or);
                                     skip = true;
                                 }
-                                _ => tokens.push(Token::BitwiseOr),
+                                _ => tokens.push(BitwiseOr),
                             },
                             '&' => match peek {
                                 Some(&'&') => {
-                                    tokens.push(Token::And);
+                                    tokens.push(And);
                                     skip = true;
                                 }
-                                _ => tokens.push(Token::BitwiseAnd),
+                                _ => tokens.push(BitwiseAnd),
                             },
                             '!' => match peek {
                                 Some(&'=') => {
-                                    tokens.push(Token::NotEqual);
+                                    tokens.push(NotEqual);
                                     skip = true;
                                 }
-                                _ => tokens.push(Token::LogicalNegation),
+                                _ => tokens.push(LogicalNegation),
                             },
                             _ => (),
                         }
@@ -174,7 +176,7 @@ pub fn tokenize(contents: &str) -> Vec<Token> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::Token::*;
+    // use super::Token::*;
 
     #[test]
     fn tokenize_simple() {
