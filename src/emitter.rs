@@ -118,12 +118,12 @@ impl Expression for BinaryOp {
             }
             BinOpType::And => {}
             BinOpType::Or => {}
-            BinOpType::Less => {},
-            BinOpType::LessOrEq => {},
-            BinOpType::Greater => {},
-            BinOpType::GreaterOrEq => {},
-            BinOpType::Equal => {},
-            BinOpType::NotEqual => {},
+            BinOpType::Less => {}
+            BinOpType::LessOrEq => {}
+            BinOpType::Greater => {}
+            BinOpType::GreaterOrEq => {}
+            BinOpType::Equal => {}
+            BinOpType::NotEqual => {}
         };
         val
     }

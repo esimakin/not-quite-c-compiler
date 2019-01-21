@@ -301,19 +301,20 @@ fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::Token::*;
 
     #[test]
     fn parse_simple() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let main_func = Function {
@@ -331,34 +332,34 @@ mod tests {
     #[test]
     fn parse_unary_ops() {
         let tokens_no_paren: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::Negation,
-            Token::BitwiseComplement,
-            Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            Negation,
+            BitwiseComplement,
+            ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         let tokens_paren: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::Negation,
-            Token::OpenParenthesis,
-            Token::BitwiseComplement,
-            Token::OpenParenthesis,
-            Token::ConstInt(3),
-            Token::CloseParenthesis,
-            Token::CloseParenthesis,
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            Negation,
+            OpenParenthesis,
+            BitwiseComplement,
+            OpenParenthesis,
+            ConstInt(3),
+            CloseParenthesis,
+            CloseParenthesis,
+            Semicolon,
+            CloseBrace,
         ];
         let res_no_paren = parse(tokens_no_paren).unwrap();
         let res_paren = parse(tokens_paren).unwrap();
@@ -368,19 +369,19 @@ mod tests {
     #[test]
     fn parse_add_mul_ops_precedence() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::ConstInt(3),
-            Token::Multiplication,
-            Token::ConstInt(4),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(2),
+            Addition,
+            ConstInt(3),
+            Multiplication,
+            ConstInt(4),
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
@@ -406,18 +407,18 @@ mod tests {
     #[test]
     fn parse_unary_and_binary_ops_precedence() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::BitwiseComplement,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            BitwiseComplement,
+            ConstInt(2),
+            Addition,
+            ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
@@ -442,20 +443,20 @@ mod tests {
     #[test]
     fn parse_unary_and_binary_ops_precedence_parens() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::BitwiseComplement,
-            Token::OpenParenthesis,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::ConstInt(3),
-            Token::CloseParenthesis,
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            BitwiseComplement,
+            OpenParenthesis,
+            ConstInt(2),
+            Addition,
+            ConstInt(3),
+            CloseParenthesis,
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
@@ -480,21 +481,21 @@ mod tests {
     #[test]
     fn parse_binary_ops_paren_precedence() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::OpenParenthesis,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::ConstInt(3),
-            Token::CloseParenthesis,
-            Token::Multiplication,
-            Token::ConstInt(4),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            OpenParenthesis,
+            ConstInt(2),
+            Addition,
+            ConstInt(3),
+            CloseParenthesis,
+            Multiplication,
+            ConstInt(4),
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
@@ -520,19 +521,19 @@ mod tests {
     #[test]
     fn parse_logical_ops_precedence() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(1),
-            Token::Or,
-            Token::ConstInt(0),
-            Token::And,
-            Token::ConstInt(0),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(1),
+            Or,
+            ConstInt(0),
+            And,
+            ConstInt(0),
+            Semicolon,
+            CloseBrace,
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
@@ -558,38 +559,38 @@ mod tests {
     #[test]
     fn parse_binary_ops_paren_same_precedence() {
         let tokens_paren: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::OpenParenthesis,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::OpenParenthesis,
-            Token::ConstInt(3),
-            Token::Multiplication,
-            Token::ConstInt(4),
-            Token::CloseParenthesis,
-            Token::CloseParenthesis,
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            OpenParenthesis,
+            ConstInt(2),
+            Addition,
+            OpenParenthesis,
+            ConstInt(3),
+            Multiplication,
+            ConstInt(4),
+            CloseParenthesis,
+            CloseParenthesis,
+            Semicolon,
+            CloseBrace,
         ];
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(2),
-            Token::Addition,
-            Token::ConstInt(3),
-            Token::Multiplication,
-            Token::ConstInt(4),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(2),
+            Addition,
+            ConstInt(3),
+            Multiplication,
+            ConstInt(4),
+            Semicolon,
+            CloseBrace,
         ];
         let result_paren = parse(tokens_paren).unwrap();
         let result = parse(tokens).unwrap();
@@ -600,21 +601,21 @@ mod tests {
     #[should_panic]
     fn parse_missing_paren_func_body() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::Negation,
-            Token::OpenParenthesis,
-            Token::BitwiseComplement,
-            Token::OpenParenthesis,
-            Token::ConstInt(3),
-            // Token::CloseParenthesis,
-            Token::CloseParenthesis,
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            Negation,
+            OpenParenthesis,
+            BitwiseComplement,
+            OpenParenthesis,
+            ConstInt(3),
+            // CloseParenthesis,
+            CloseParenthesis,
+            Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -623,15 +624,15 @@ mod tests {
     #[should_panic]
     fn parse_missing_paren_func_params() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            // Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            // CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -640,15 +641,15 @@ mod tests {
     #[should_panic]
     fn parse_missing_retval() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            // Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            // ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -657,15 +658,15 @@ mod tests {
     #[should_panic]
     fn parse_missing_brace() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(3),
-            Token::Semicolon,
-            // Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(3),
+            Semicolon,
+            // CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -674,15 +675,15 @@ mod tests {
     #[should_panic]
     fn parse_no_semicolon() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::ReturnKeyword,
-            Token::ConstInt(3),
-            // Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            ReturnKeyword,
+            ConstInt(3),
+            // Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -691,14 +692,14 @@ mod tests {
     #[should_panic]
     fn parse_no_space_at_retval() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::Identifier(String::from("return0")),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            Identifier(String::from("return0")),
+            Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
@@ -707,15 +708,15 @@ mod tests {
     #[should_panic]
     fn parse_return_uppercase() {
         let tokens: Vec<Token> = vec![
-            Token::IntKeyword,
-            Token::Identifier(String::from("main")),
-            Token::OpenParenthesis,
-            Token::CloseParenthesis,
-            Token::OpenBrace,
-            Token::Identifier(String::from("RETURN")),
-            Token::ConstInt(3),
-            Token::Semicolon,
-            Token::CloseBrace,
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            Identifier(String::from("RETURN")),
+            ConstInt(3),
+            Semicolon,
+            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
