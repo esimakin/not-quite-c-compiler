@@ -81,25 +81,27 @@ impl Expression for UnaryOp {
     }
 }
 
+use parser::BinOpType::*;
+
 impl Expression for BinaryOp {
     fn visit(&self) -> String {
         let mut val = String::from("");
         match self.bin_op_type {
-            BinOpType::Addition => {
+            Addition => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
                 val.push_str(&self.right.visit());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  addl %ecx, %eax\n");
             }
-            BinOpType::Multiplication => {
+            Multiplication => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
                 val.push_str(&self.right.visit());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  imul %ecx, %eax\n");
             }
-            BinOpType::Substraction => {
+            Substraction => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
                 val.push_str(&self.right.visit());
@@ -107,7 +109,7 @@ impl Expression for BinaryOp {
                 val.push_str("  pop %eax\n");
                 val.push_str("  subl %ecx, %eax\n");
             }
-            BinOpType::Division => {
+            Division => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
                 val.push_str(&self.right.visit());
@@ -116,14 +118,44 @@ impl Expression for BinaryOp {
                 val.push_str("  movl $0, %edx\n");
                 val.push_str("  idivl %ecx\n");
             }
-            BinOpType::And => {}
-            BinOpType::Or => {}
-            BinOpType::Less => {}
-            BinOpType::LessOrEq => {}
-            BinOpType::Greater => {}
-            BinOpType::GreaterOrEq => {}
-            BinOpType::Equal => {}
-            BinOpType::NotEqual => {}
+            Or => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  pop %ecx\n");
+                val.push_str("  orl %ecx, %eax\n");
+                val.push_str("  movl $0, %eax\n");
+                val.push_str("  setne %al\n");
+            }
+            And => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  pop %ecx\n");
+                val.push_str("  cmpl $0, %ecx\n");
+                val.push_str("  setne %cl\n");
+                val.push_str("  cmpl $0, %eax\n");
+                val.push_str("  movl $0, %eax\n");
+                val.push_str("  setne %al\n");
+                val.push_str("  %cl, %al\n");
+            }
+            Less | LessOrEq | Greater | GreaterOrEq | Equal | NotEqual => {
+                val.push_str(&self.left.visit());
+                val.push_str("  push %eax\n");
+                val.push_str(&self.right.visit());
+                val.push_str("  pop %ecx\n");
+                val.push_str("  cmpl $0, %eax\n");
+                val.push_str("  movl $0, %eax\n");
+                match self.bin_op_type {
+                    Less => val.push_str("  setl %al\n"),
+                    LessOrEq => val.push_str("  setle %al\n"),
+                    Greater => val.push_str("  setg %al\n"),
+                    GreaterOrEq => val.push_str("  setge %al\n"),
+                    Equal => val.push_str("  sete %al\n"),
+                    NotEqual => val.push_str("  setne %al\n"),
+                    _ => (),
+                }
+            }
         };
         val
     }
@@ -150,18 +182,18 @@ impl UnaryOpType {
 impl BinOpType {
     fn to_string(&self) -> &'static str {
         match self {
-            BinOpType::Addition => "+",
-            BinOpType::Multiplication => "*",
-            BinOpType::Substraction => "-",
-            BinOpType::Division => "/",
-            BinOpType::And => "&&",
-            BinOpType::Or => "||",
-            BinOpType::Less => "<",
-            BinOpType::LessOrEq => "<=",
-            BinOpType::Greater => ">",
-            BinOpType::GreaterOrEq => ">=",
-            BinOpType::Equal => "==",
-            BinOpType::NotEqual => "!=",
+            Addition => "+",
+            Multiplication => "*",
+            Substraction => "-",
+            Division => "/",
+            And => "&&",
+            Or => "||",
+            Less => "<",
+            LessOrEq => "<=",
+            Greater => ">",
+            GreaterOrEq => ">=",
+            Equal => "==",
+            NotEqual => "!=",
         }
     }
 }
