@@ -35,6 +35,14 @@ pub enum BinOpType {
     Multiplication,
     Substraction,
     Division,
+    Or,
+    And,
+    Less,
+    LessOrEq,
+    Greater,
+    GreaterOrEq,
+    Equal,
+    NotEqual,
 }
 
 pub struct UnaryOp {
@@ -151,25 +159,62 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> StatementResult {
         None => Err("Not a statement"),
     };
 
-    match tokens.pop() {
-        Some(t) => match t {
-            Token::Semicolon => stmt_result,
-            _ => Err("(;) expected"),
+    match stmt_result {
+        Ok(_) => match tokens.pop() {
+            Some(t) => match t {
+                Token::Semicolon => stmt_result,
+                _ => Err("(;) expected"),
+            },
+            None => stmt_result,
         },
-        None => stmt_result,
+        Err(err) => Err(err),
     }
 }
 
 fn parse_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
-    parse_rule(tokens, parse_term, |token: &Token| token == &Token::Addition || token == &Token::Negation)
+    parse_rule(tokens, parse_logical_and_expression, |t: &Token| {
+        t == &Token::Or
+    })
+}
+
+fn parse_logical_and_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+    parse_rule(tokens, parse_equality_expression, |t: &Token| {
+        t == &Token::And
+    })
+}
+
+fn parse_equality_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+    parse_rule(tokens, parse_relational_expression, |t: &Token| {
+        t == &Token::Equal || t == &Token::NotEqual
+    })
+}
+
+fn parse_relational_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+    parse_rule(tokens, parse_additive_expression, |t: &Token| {
+        t == &Token::LessThan
+            || t == &Token::GreaterThan
+            || t == &Token::LessOrEqual
+            || t == &Token::GreaterOrEqual
+    })
+}
+
+fn parse_additive_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+    parse_rule(tokens, parse_term, |t: &Token| {
+        t == &Token::Addition || t == &Token::Negation
+    })
 }
 
 fn parse_term(tokens: &mut Vec<Token>) -> ExpressionResult {
-    parse_rule(tokens, parse_factor, |token: &Token| token == &Token::Multiplication || token == &Token::Division)
+    parse_rule(tokens, parse_factor, |t: &Token| {
+        t == &Token::Multiplication || t == &Token::Division
+    })
 }
 
 fn parse_rule<F, P>(tokens: &mut Vec<Token>, parse_one: F, predicate: P) -> ExpressionResult
-where F: Fn(&mut Vec<Token>) -> ExpressionResult, P: Fn(&Token) -> bool {
+where
+    F: Fn(&mut Vec<Token>) -> ExpressionResult,
+    P: Fn(&Token) -> bool,
+{
     let mut first = parse_one(tokens)?;
     loop {
         let tok = tokens.pop();
@@ -200,6 +245,14 @@ fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
         &Token::Multiplication => Ok(BinOpType::Multiplication),
         &Token::Negation => Ok(BinOpType::Substraction),
         &Token::Division => Ok(BinOpType::Division),
+        &Token::Or => Ok(BinOpType::Or),
+        &Token::And => Ok(BinOpType::And),
+        &Token::LessThan => Ok(BinOpType::Less),
+        &Token::LessOrEqual => Ok(BinOpType::LessOrEq),
+        &Token::GreaterThan => Ok(BinOpType::Greater),
+        &Token::GreaterOrEqual => Ok(BinOpType::GreaterOrEq),
+        &Token::Equal => Ok(BinOpType::Equal),
+        &Token::NotEqual => Ok(BinOpType::NotEqual),
         _ => Err("Unknown binary operation"),
     }
 }
@@ -245,7 +298,6 @@ fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO: add tree inspecting tests
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_binary_ops_precedence() {
+    fn parse_add_mul_ops_precedence() {
         let tokens: Vec<Token> = vec![
             Token::IntKeyword,
             Token::Identifier(String::from("main")),
@@ -458,6 +510,44 @@ mod tests {
                             right: Box::new(IntExpression { val: 3 }),
                         }),
                         right: Box::new(IntExpression { val: 4 }),
+                    }),
+                })],
+            })],
+        };
+        assert_eq!(result.to_string(), expected.to_string());
+    }
+
+    #[test]
+    fn parse_logical_ops_precedence() {
+        let tokens: Vec<Token> = vec![
+            Token::IntKeyword,
+            Token::Identifier(String::from("main")),
+            Token::OpenParenthesis,
+            Token::CloseParenthesis,
+            Token::OpenBrace,
+            Token::ReturnKeyword,
+            Token::ConstInt(1),
+            Token::Or,
+            Token::ConstInt(0),
+            Token::And,
+            Token::ConstInt(0),
+            Token::Semicolon,
+            Token::CloseBrace,
+        ];
+        let result = parse(tokens).unwrap();
+        let expected = Program {
+            statements: vec![Box::new(Function {
+                name: String::from("main"),
+                params: Vec::new(),
+                statements: vec![Box::new(ReturnStatement {
+                    expression: Box::new(BinaryOp {
+                        bin_op_type: BinOpType::Or,
+                        left: Box::new(IntExpression { val: 1 }),
+                        right: Box::new(BinaryOp {
+                            bin_op_type: BinOpType::And,
+                            left: Box::new(IntExpression { val: 0 }),
+                            right: Box::new(IntExpression { val: 0 }),
+                        }),
                     }),
                 })],
             })],

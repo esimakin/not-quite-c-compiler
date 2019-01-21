@@ -91,14 +91,14 @@ impl Expression for BinaryOp {
                 val.push_str(&self.right.visit());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  addl %ecx, %eax\n");
-            },
+            }
             BinOpType::Multiplication => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
                 val.push_str(&self.right.visit());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  imul %ecx, %eax\n");
-            },
+            }
             BinOpType::Substraction => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
@@ -106,7 +106,7 @@ impl Expression for BinaryOp {
                 val.push_str("  movl %eax, %ecx\n");
                 val.push_str("  pop %eax\n");
                 val.push_str("  subl %ecx, %eax\n");
-            },
+            }
             BinOpType::Division => {
                 val.push_str(&self.left.visit());
                 val.push_str("  push %eax\n");
@@ -116,6 +116,14 @@ impl Expression for BinaryOp {
                 val.push_str("  movl $0, %edx\n");
                 val.push_str("  idivl %ecx\n");
             }
+            BinOpType::And => {}
+            BinOpType::Or => {}
+            BinOpType::Less => {},
+            BinOpType::LessOrEq => {},
+            BinOpType::Greater => {},
+            BinOpType::GreaterOrEq => {},
+            BinOpType::Equal => {},
+            BinOpType::NotEqual => {},
         };
         val
     }
@@ -146,6 +154,14 @@ impl BinOpType {
             BinOpType::Multiplication => "*",
             BinOpType::Substraction => "-",
             BinOpType::Division => "/",
+            BinOpType::And => "&&",
+            BinOpType::Or => "||",
+            BinOpType::Less => "<",
+            BinOpType::LessOrEq => "<=",
+            BinOpType::Greater => ">",
+            BinOpType::GreaterOrEq => ">=",
+            BinOpType::Equal => "==",
+            BinOpType::NotEqual => "!=",
         }
     }
 }

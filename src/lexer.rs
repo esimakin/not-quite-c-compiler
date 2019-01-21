@@ -31,6 +31,14 @@ pub enum Token {
     GreaterOrEqual,
 }
 
+use std::fmt;
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 pub fn tokenize(contents: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut chars = contents.chars().peekable();
