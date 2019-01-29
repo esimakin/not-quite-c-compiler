@@ -1,29 +1,5 @@
 use lexer::Token;
 
-pub trait Expression {
-    fn visit(&self) -> String;
-    fn to_string(&self) -> String;
-}
-
-pub trait Statement {
-    fn visit(&self) -> String;
-    fn to_string(&self) -> String;
-}
-
-pub struct ReturnStatement {
-    pub expression: Box<dyn Expression>,
-}
-
-pub struct Function {
-    pub name: String,
-    pub params: Vec<Box<dyn Statement>>,
-    pub statements: Vec<Box<dyn Statement>>,
-}
-
-pub struct IntExpression {
-    pub val: u32,
-}
-
 pub enum UnaryOpType {
     Complement,
     Negation,
@@ -45,26 +21,67 @@ pub enum BinOpType {
     NotEqual,
 }
 
-pub struct UnaryOp {
+pub trait Expression {
+    fn visit(&self) -> String;
+    fn to_string(&self) -> String;
+}
+
+pub trait Statement {
+    fn visit(&self) -> String;
+    fn to_string(&self) -> String;
+}
+
+pub struct Program {
+    pub func: Function,
+}
+
+pub struct Function {
+    pub name: String,
+    pub statements: Vec<Box<dyn Statement>>,
+}
+
+pub struct DeclareStatement {
+    pub var_name: String,
+    pub expr: Option<Box<dyn Expression>>,
+}
+
+pub struct ReturnStatement {
+    pub expr: Box<dyn Expression>,
+}
+
+pub struct ExprStatement {
+    pub expr: Box<dyn Expression>,
+}
+
+pub struct IntExpression {
+    pub val: u32,
+}
+
+pub struct AssignExpression {
+    pub var_name: String,
+    pub expr: Box<dyn Expression>,
+}
+
+pub struct VarExpression {
+    pub var_name: String,
+}
+
+pub struct UnaryOpExpression {
     pub unary_op_type: UnaryOpType,
     pub expression: Box<dyn Expression>,
 }
 
-pub struct BinaryOp {
+pub struct BinOpExpression {
     pub bin_op_type: BinOpType,
     pub left: Box<dyn Expression>,
     pub right: Box<dyn Expression>,
-}
-
-pub struct Program {
-    pub statements: Vec<Box<dyn Statement>>,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     let mut tokens = tokens;
     tokens.reverse();
     Ok(Program {
-        statements: parse_stmts(&mut tokens, true)?,
+        func: parse_function(&mut tokens)?
     })
 }
 
@@ -72,7 +89,7 @@ type StatementResult = Result<Box<dyn Statement>, &'static str>;
 type StatementsResult = Result<Vec<Box<dyn Statement>>, &'static str>;
 type ExpressionResult = Result<Box<dyn Expression>, &'static str>;
 
-fn parse_function(tokens: &mut Vec<Token>) -> StatementResult {
+fn parse_function(tokens: &mut Vec<Token>) -> Result<Function, &'static str> {
     let f_name = match tokens.pop() {
         Some(t) => match t {
             Token::IntKeyword => match tokens.pop() {
@@ -80,20 +97,24 @@ fn parse_function(tokens: &mut Vec<Token>) -> StatementResult {
                     Token::Identifier(name) => name,
                     _ => return Err("No name is specified"),
                 },
-                None => return Err("Unexpted end of function definition (expected function name)"),
+                None => {
+                    return Err("Unexpected end of function definition (expected function name)");
+                }
             },
             _ => return Err("Wrong function return type (only 'int' supported)"),
         },
-        None => return Err("Unexpted end of function definition (expected function return type)"),
+        None => return Err("Unexpected end of function definition (expected function return type)"),
     };
-
-    let f_params = match tokens.pop() {
-        Some(t) => match t {
-            Token::OpenParenthesis => parse_function_params(tokens)?,
-            _ => return Err("Wrong function definition"),
+    
+    match tokens.pop() {
+        Some(Token::OpenParenthesis) => {
+            match tokens.pop() {
+                Some(Token::CloseParenthesis) => {},
+        _ => return Err("Syntax error")
+            }
         },
-        _ => return Err("Unexpected end of function definition (expected function parameters)"),
-    };
+        _ => return Err("Syntax error")
+    }
 
     let stms = match tokens.pop() {
         Some(t) => match t {
@@ -103,21 +124,10 @@ fn parse_function(tokens: &mut Vec<Token>) -> StatementResult {
         _ => Vec::new(),
     };
 
-    Ok(Box::new(Function {
+    Ok(Function {
         name: f_name,
-        params: f_params,
         statements: stms,
-    }))
-}
-
-fn parse_function_params(tokens: &mut Vec<Token>) -> StatementsResult {
-    match tokens.pop() {
-        Some(t) => match t {
-            Token::CloseParenthesis => Ok(Vec::new()), // ok, quit
-            _ => Err("Wrong function parameters syntax"),
-        },
-        _ => Err("Unexpected end of function parameters definition"),
-    }
+    })
 }
 
 fn parse_stmts(tokens: &mut Vec<Token>, global: bool) -> StatementsResult {
@@ -148,30 +158,74 @@ fn parse_one_statement(tokens: &mut Vec<Token>) -> StatementResult {
     let stmt_result: StatementResult = match tokens.pop() {
         Some(t) => match t {
             Token::ReturnKeyword => Ok(Box::new(ReturnStatement {
-                expression: parse_expression(tokens)?,
+                expr: parse_expression(tokens)?,
             })),
-            Token::IntKeyword => {
+            Token::IntKeyword => parse_int_statement_or_function(tokens),
+            t => {
                 tokens.push(t);
-                parse_function(tokens)
+                Ok(Box::new(ExprStatement {
+                    expr: parse_expression(tokens)?
+                }))
             }
-            _ => Err("Unknown statement"),
         },
-        None => Err("Not a statement"),
+        None => return Err("Not a statement"),
     };
 
-    match stmt_result {
-        Ok(_) => match tokens.pop() {
+        match tokens.pop() {
             Some(t) => match t {
                 Token::Semicolon => stmt_result,
                 _ => Err("(;) expected"),
             },
             None => stmt_result,
-        },
-        Err(err) => Err(err),
-    }
+        }
+}
+
+fn parse_int_statement_or_function(tokens: &mut Vec<Token>) -> StatementResult {
+    let id: String = match tokens.pop() {
+        Some(Token::Identifier(name)) => name,
+        _ => return Err("Expected identifier, got something else")
+    };
+
+    let expr: Option<Box<dyn Expression>> = match tokens.pop() {
+        Some(Token::Assignment) => Some(parse_expression(tokens)?),
+        Some(_) => return Err("Syntax error"),
+        None => None
+    };
+
+    Ok(Box::new(DeclareStatement {
+        var_name: id,
+        expr: expr
+    }))
 }
 
 fn parse_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+    match tokens.pop() {
+        Some(Token::Identifier(name)) => {
+            match tokens.pop() {
+                Some(Token::Assignment) => {
+                    Ok(Box::new(AssignExpression {
+                        var_name: name,
+                        expr: parse_expression(tokens)?
+                    }))
+                },
+                Some(t) => {
+                    tokens.push(t);
+                    Ok(Box::new(VarExpression {
+                        var_name: name
+                    }))
+                }
+                _ => Err("Unexpected end of assignment")
+            }
+        }
+        Some(t) => {
+            tokens.push(t);
+            parse_logical_or_expression(tokens)
+        }
+        None => Err("Unexpected end of expression")
+    }
+}
+
+fn parse_logical_or_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
     parse_rule(tokens, parse_logical_and_expression, |t: &Token| {
         t == &Token::Or
     })
@@ -223,7 +277,7 @@ where
             if predicate(&tok) {
                 let bin_op = token_to_bin_op_type(&tok)?;
                 let next = parse_one(tokens)?;
-                first = Box::new(BinaryOp {
+                first = Box::new(BinOpExpression {
                     bin_op_type: bin_op,
                     left: first,
                     right: next,
@@ -272,7 +326,7 @@ fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
             Token::ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
             Token::Negation | Token::BitwiseComplement | Token::LogicalNegation => {
                 let expr = parse_factor(tokens)?;
-                Ok(Box::new(UnaryOp {
+                Ok(Box::new(UnaryOpExpression {
                     unary_op_type: token_to_unary_op_type(&tok)?,
                     expression: expr,
                 }))
@@ -300,8 +354,8 @@ fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::Token::*;
+    use super::*;
 
     #[test]
     fn parse_unary_paren() {
@@ -360,20 +414,19 @@ mod tests {
         ];
         let result = parse(tokens).unwrap();
         let expected = Program {
-            statements: vec![Box::new(Function {
+            func: Function {
                 name: String::from("main"),
-                params: Vec::new(),
                 statements: vec![Box::new(ReturnStatement {
-                    expression: Box::new(UnaryOp {
+                    expr: Box::new(UnaryOpExpression {
                         unary_op_type: UnaryOpType::Complement,
-                        expression: Box::new(BinaryOp {
+                        expression: Box::new(BinOpExpression {
                             bin_op_type: BinOpType::Addition,
                             left: Box::new(IntExpression { val: 2 }),
                             right: Box::new(IntExpression { val: 3 }),
                         }),
                     }),
                 })],
-            })],
+            },
         };
         assert_eq!(result.to_string(), expected.to_string());
     }
@@ -417,6 +470,54 @@ mod tests {
         let result_paren = parse(tokens_paren).unwrap();
         let result = parse(tokens).unwrap();
         assert_eq!(result_paren.to_string(), result.to_string());
+    }
+
+    #[test]
+    fn parse_many_statements() {
+        let tokens: Vec<Token> = vec![
+            IntKeyword,
+            Identifier(String::from("main")),
+            OpenParenthesis,
+            CloseParenthesis,
+            OpenBrace,
+            IntKeyword,
+            Identifier(String::from("a")),
+            Assignment,
+            ConstInt(3),
+            Semicolon,
+            Identifier(String::from("a")),
+            Assignment,
+            ConstInt(4),
+            Semicolon,
+            ReturnKeyword,
+            Identifier(String::from("a")),
+            Semicolon,
+            CloseBrace
+        ];
+        let expected = Program {
+            func: Function {
+                name: String::from("main"),
+                statements: vec![
+                    Box::new(DeclareStatement {
+                        var_name: String::from("a"),
+                        expr: Some(Box::new(IntExpression { val: 3 }))
+                    }),
+                    Box::new(ExprStatement {
+                        expr: Box::new(AssignExpression {
+                            var_name: String::from("a"),
+                            expr: Box::new(IntExpression {val: 4})
+                        })
+                    }),
+                    Box::new(ReturnStatement {
+                        expr: Box::new(VarExpression {
+                            var_name: String::from("a")
+                        })
+                    })
+                ]
+            }
+        };
+        let ast = parse(tokens).unwrap();
+        assert_eq!(ast.to_string(), expected.to_string());
     }
 
     #[test]

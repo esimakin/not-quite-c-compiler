@@ -3,14 +3,14 @@ use parser::*;
 impl Statement for ReturnStatement {
     fn visit(&self) -> String {
         let mut val = String::from("");
-        val.push_str(&self.expression.visit());
+        val.push_str(&self.expr.visit());
         val.push_str("  ret\n");
         val.push_str("\n");
         val
     }
     fn to_string(&self) -> String {
         let mut val = String::from("ReturnStatement[");
-        val.push_str(&self.expression.to_string());
+        val.push_str(&self.expr.to_string());
         val.push_str("]");
         val
     }
@@ -38,6 +38,24 @@ impl Statement for Function {
     }
 }
 
+impl Statement for DeclareStatement {
+    fn visit(&self) -> String {
+        String::from("")
+    }
+    fn to_string(&self) -> String {
+        String::from("")
+    }
+}
+
+impl Statement for ExprStatement {
+    fn visit(&self) -> String {
+        String::from("")
+    }
+    fn to_string(&self) -> String {
+        String::from("")
+    }
+}
+
 impl Expression for IntExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
@@ -54,7 +72,25 @@ impl Expression for IntExpression {
     }
 }
 
-impl Expression for UnaryOp {
+impl Expression for AssignExpression {
+    fn visit(&self) -> String {
+        String::from("")
+    }
+    fn to_string(&self) -> String {
+        String::from("")
+    }
+}
+
+impl Expression for VarExpression {
+    fn visit(&self) -> String {
+        String::from("")
+    }
+    fn to_string(&self) -> String {
+        String::from("")
+    }
+}
+
+impl Expression for UnaryOpExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
         val.push_str(&self.expression.visit());
@@ -83,7 +119,7 @@ impl Expression for UnaryOp {
 
 use parser::BinOpType::*;
 
-impl Expression for BinaryOp {
+impl Expression for BinOpExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
         match self.bin_op_type {
@@ -199,12 +235,9 @@ impl BinOpType {
 }
 
 impl Program {
-    #[allow(dead_code)]
     pub fn to_string(&self) -> String {
         let mut val = String::from("Program[");
-        for stmt in self.statements.iter() {
-            val.push_str(&stmt.to_string());
-        }
+        val.push_str(&self.func.to_string());
         val.push_str("]");
         val
     }
@@ -212,8 +245,6 @@ impl Program {
 
 pub fn emit(program: Program) -> Result<String, &'static str> {
     let mut asm = String::from("");
-    for stmt in &program.statements {
-        asm.push_str(&stmt.visit());
-    }
+    asm.push_str(&program.func.visit());
     return Ok(asm);
 }
