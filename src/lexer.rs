@@ -180,166 +180,24 @@ mod tests {
 
     #[test]
     fn tokenize_simple() {
-        let result = tokenize("int main() {\n return 3; \n}");
+        let tokens = tokenize("int main() {\n\tint a = 3; return a;\n}");
         let expected: Vec<Token> = vec![
             IntKeyword,
             Identifier(String::from("main")),
             OpenParenthesis,
             CloseParenthesis,
             OpenBrace,
-            ReturnKeyword,
+            IntKeyword,
+            Identifier(String::from("a")),
+            Assignment,
             ConstInt(3),
             Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_min_spaces() {
-        let result = tokenize("int main(){return;}");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
             ReturnKeyword,
+            Identifier(String::from("a")),
             Semicolon,
             CloseBrace,
         ];
-        assert_eq!(result, expected);
+        assert_eq!(tokens, expected);
     }
 
-    #[test]
-    fn tokenize_spaces() {
-        let result = tokenize("   int    main ( ) {   return    100  ; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(100),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_unary_ops() {
-        let result = tokenize("int main() { return !~-4; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            LogicalNegation,
-            BitwiseComplement,
-            Negation,
-            ConstInt(4),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_no_space_at_retval() {
-        let result = tokenize("int main() { return0; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            Identifier(String::from("return0")),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_return_uppercase() {
-        let result = tokenize("int main() { RETURN 3; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            Identifier(String::from("RETURN")),
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_bitwise() {
-        let result = tokenize("int main() { return <<>>100; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            BitwiseShiftLeft,
-            BitwiseShiftRight,
-            ConstInt(100),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-        let result = tokenize("int main() { return ^&|1; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            BitwiseXor,
-            BitwiseAnd,
-            BitwiseOr,
-            ConstInt(1),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn tokenize_relational() {
-        let result = tokenize("int main() { return 1 < 2 <= 3 == 3 >= 2 > 1; }");
-        let expected: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(1),
-            LessThan,
-            ConstInt(2),
-            LessOrEqual,
-            ConstInt(3),
-            Equal,
-            ConstInt(3),
-            GreaterOrEqual,
-            ConstInt(2),
-            GreaterThan,
-            ConstInt(1),
-            Semicolon,
-            CloseBrace,
-        ];
-        assert_eq!(result, expected);
-    }
 }

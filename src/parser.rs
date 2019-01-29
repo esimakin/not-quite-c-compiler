@@ -304,33 +304,7 @@ mod tests {
     use super::Token::*;
 
     #[test]
-    fn parse_simple() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
-        let main_func = Function {
-            name: String::from("main"),
-            params: Vec::new(),
-            statements: vec![Box::new(ReturnStatement {
-                expression: Box::new(IntExpression { val: 3 }),
-            })],
-        };
-        let stmts: Vec<Box<dyn Statement>> = vec![Box::new(main_func)];
-        let program = Program { statements: stmts };
-        assert_eq!(result.to_string(), program.to_string());
-    }
-
-    #[test]
-    fn parse_unary_ops() {
+    fn parse_unary_paren() {
         let tokens_no_paren: Vec<Token> = vec![
             IntKeyword,
             Identifier(String::from("main")),
@@ -367,80 +341,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_add_mul_ops_precedence() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(2),
-            Addition,
-            ConstInt(3),
-            Multiplication,
-            ConstInt(4),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
-        let expected = Program {
-            statements: vec![Box::new(Function {
-                name: String::from("main"),
-                params: Vec::new(),
-                statements: vec![Box::new(ReturnStatement {
-                    expression: Box::new(BinaryOp {
-                        bin_op_type: BinOpType::Addition,
-                        left: Box::new(IntExpression { val: 2 }),
-                        right: Box::new(BinaryOp {
-                            bin_op_type: BinOpType::Multiplication,
-                            left: Box::new(IntExpression { val: 3 }),
-                            right: Box::new(IntExpression { val: 4 }),
-                        }),
-                    }),
-                })],
-            })],
-        };
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn parse_unary_and_binary_ops_precedence() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            BitwiseComplement,
-            ConstInt(2),
-            Addition,
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
-        let expected = Program {
-            statements: vec![Box::new(Function {
-                name: String::from("main"),
-                params: Vec::new(),
-                statements: vec![Box::new(ReturnStatement {
-                    expression: Box::new(BinaryOp {
-                        bin_op_type: BinOpType::Addition,
-                        left: Box::new(UnaryOp {
-                            unary_op_type: UnaryOpType::Complement,
-                            expression: Box::new(IntExpression { val: 2 }),
-                        }),
-                        right: Box::new(IntExpression { val: 3 }),
-                    }),
-                })],
-            })],
-        };
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
     fn parse_unary_and_binary_ops_precedence_parens() {
         let tokens: Vec<Token> = vec![
             IntKeyword,
@@ -470,84 +370,6 @@ mod tests {
                             bin_op_type: BinOpType::Addition,
                             left: Box::new(IntExpression { val: 2 }),
                             right: Box::new(IntExpression { val: 3 }),
-                        }),
-                    }),
-                })],
-            })],
-        };
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn parse_binary_ops_paren_precedence() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            OpenParenthesis,
-            ConstInt(2),
-            Addition,
-            ConstInt(3),
-            CloseParenthesis,
-            Multiplication,
-            ConstInt(4),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
-        let expected = Program {
-            statements: vec![Box::new(Function {
-                name: String::from("main"),
-                params: Vec::new(),
-                statements: vec![Box::new(ReturnStatement {
-                    expression: Box::new(BinaryOp {
-                        bin_op_type: BinOpType::Multiplication,
-                        left: Box::new(BinaryOp {
-                            bin_op_type: BinOpType::Addition,
-                            left: Box::new(IntExpression { val: 2 }),
-                            right: Box::new(IntExpression { val: 3 }),
-                        }),
-                        right: Box::new(IntExpression { val: 4 }),
-                    }),
-                })],
-            })],
-        };
-        assert_eq!(result.to_string(), expected.to_string());
-    }
-
-    #[test]
-    fn parse_logical_ops_precedence() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(1),
-            Or,
-            ConstInt(0),
-            And,
-            ConstInt(0),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
-        let expected = Program {
-            statements: vec![Box::new(Function {
-                name: String::from("main"),
-                params: Vec::new(),
-                statements: vec![Box::new(ReturnStatement {
-                    expression: Box::new(BinaryOp {
-                        bin_op_type: BinOpType::Or,
-                        left: Box::new(IntExpression { val: 1 }),
-                        right: Box::new(BinaryOp {
-                            bin_op_type: BinOpType::And,
-                            left: Box::new(IntExpression { val: 0 }),
-                            right: Box::new(IntExpression { val: 0 }),
                         }),
                     }),
                 })],
@@ -667,56 +489,6 @@ mod tests {
             ConstInt(3),
             Semicolon,
             // CloseBrace,
-        ];
-        parse(tokens).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn parse_no_semicolon() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(3),
-            // Semicolon,
-            CloseBrace,
-        ];
-        parse(tokens).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn parse_no_space_at_retval() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            Identifier(String::from("return0")),
-            Semicolon,
-            CloseBrace,
-        ];
-        parse(tokens).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn parse_return_uppercase() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            Identifier(String::from("RETURN")),
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
         ];
         parse(tokens).unwrap();
     }
