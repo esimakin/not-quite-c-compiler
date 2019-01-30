@@ -41,21 +41,17 @@ pub struct Function {
     pub statements: Vec<Box<dyn Statement>>,
 }
 
+pub struct ReturnStatement {
+    pub expr: Box<dyn Expression>,
+}
+
 pub struct DeclareStatement {
     pub var_name: String,
     pub expr: Option<Box<dyn Expression>>,
 }
 
-pub struct ReturnStatement {
-    pub expr: Box<dyn Expression>,
-}
-
 pub struct ExprStatement {
     pub expr: Box<dyn Expression>,
-}
-
-pub struct IntExpression {
-    pub val: u32,
 }
 
 pub struct AssignExpression {
@@ -67,15 +63,19 @@ pub struct VarExpression {
     pub var_name: String,
 }
 
+pub struct BinOpExpression {
+    pub bin_op_type: BinOpType,
+    pub left: Box<dyn Expression>,
+    pub right: Box<dyn Expression>,
+}
+
 pub struct UnaryOpExpression {
     pub unary_op_type: UnaryOpType,
     pub expression: Box<dyn Expression>,
 }
 
-pub struct BinOpExpression {
-    pub bin_op_type: BinOpType,
-    pub left: Box<dyn Expression>,
-    pub right: Box<dyn Expression>,
+pub struct IntExpression {
+    pub val: u32,
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
@@ -109,7 +109,7 @@ fn parse_function(tokens: Tokens) -> Result<Function, &'static str> {
     }?;
 
     let stms = match tokens.pop() {
-        Some(OpenBrace) => Ok(parse_stmts(tokens, false)?),
+        Some(OpenBrace) => Ok(parse_stmts(tokens)?),
         _ => Err("Function body syntax error"),
     }?;
 
@@ -119,7 +119,7 @@ fn parse_function(tokens: Tokens) -> Result<Function, &'static str> {
     })
 }
 
-fn parse_stmts(tokens: Tokens, global: bool) -> StatementsResult {
+fn parse_stmts(tokens: Tokens) -> StatementsResult {
     let mut statements: Vec<Box<dyn Statement>> = Vec::new();
     loop {
         match tokens.pop() {
@@ -129,11 +129,7 @@ fn parse_stmts(tokens: Tokens, global: bool) -> StatementsResult {
                 statements.push(parse_one_statement(tokens)?);
             }
             None => {
-                if !global {
-                    return Err("Unexpected end of statements");
-                } else {
-                    break;
-                }
+                return Err("Unexpected end of statements");
             }
         };
     }
@@ -159,7 +155,7 @@ fn parse_one_statement(tokens: Tokens) -> StatementResult {
     match tokens.pop() {
         Some(t) => match t {
             Semicolon => stmt_result,
-            _ => Err("(;) expected"),
+            _ => Err("Semicolon expected"),
         },
         None => stmt_result,
     }
@@ -192,7 +188,8 @@ fn parse_expression(tokens: Tokens) -> ExpressionResult {
             })),
             Some(t) => {
                 tokens.push(t);
-                Ok(Box::new(VarExpression { var_name: name }))
+                tokens.push(Identifier(name));
+                parse_logical_or_expression(tokens)
             }
             _ => Err("Unexpected end of assignment"),
         },
@@ -316,6 +313,7 @@ fn parse_factor(tokens: Tokens) -> ExpressionResult {
                     None => Err("Missing parenthesis (unexpected end of stream)"),
                 }
             }
+            Identifier(name) => Ok(Box::new(VarExpression { var_name: name })),
             _ => Err("Expression syntax error"),
         },
         None => Err("Unexpected end of expression"),
