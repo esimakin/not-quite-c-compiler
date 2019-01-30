@@ -1,4 +1,5 @@
 use lexer::Token;
+use lexer::Token::*;
 
 pub enum UnaryOpType {
     Complement,
@@ -81,48 +82,36 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     let mut tokens = tokens;
     tokens.reverse();
     Ok(Program {
-        func: parse_function(&mut tokens)?
+        func: parse_function(&mut tokens)?,
     })
 }
 
 type StatementResult = Result<Box<dyn Statement>, &'static str>;
 type StatementsResult = Result<Vec<Box<dyn Statement>>, &'static str>;
 type ExpressionResult = Result<Box<dyn Expression>, &'static str>;
+type Tokens<'a> = &'a mut Vec<Token>;
 
-fn parse_function(tokens: &mut Vec<Token>) -> Result<Function, &'static str> {
+fn parse_function(tokens: Tokens) -> Result<Function, &'static str> {
     let f_name = match tokens.pop() {
-        Some(t) => match t {
-            Token::IntKeyword => match tokens.pop() {
-                Some(t) => match t {
-                    Token::Identifier(name) => name,
-                    _ => return Err("No name is specified"),
-                },
-                None => {
-                    return Err("Unexpected end of function definition (expected function name)");
-                }
-            },
-            _ => return Err("Wrong function return type (only 'int' supported)"),
+        Some(IntKeyword) => match tokens.pop() {
+            Some(Identifier(name)) => Ok(name),
+            _ => Err("Function identifier expected"),
         },
-        None => return Err("Unexpected end of function definition (expected function return type)"),
-    };
-    
+        _ => Err("Unexpected start of function declaration"),
+    }?;
+
     match tokens.pop() {
-        Some(Token::OpenParenthesis) => {
-            match tokens.pop() {
-                Some(Token::CloseParenthesis) => {},
-        _ => return Err("Syntax error")
-            }
+        Some(OpenParenthesis) => match tokens.pop() {
+            Some(CloseParenthesis) => Ok(CloseParenthesis),
+            _ => Err("Syntax error"),
         },
-        _ => return Err("Syntax error")
-    }
+        _ => Err("Syntax error"),
+    }?;
 
     let stms = match tokens.pop() {
-        Some(t) => match t {
-            Token::OpenBrace => parse_stmts(tokens, false)?,
-            _ => return Err("Function body syntax error"),
-        },
-        _ => Vec::new(),
-    };
+        Some(OpenBrace) => Ok(parse_stmts(tokens, false)?),
+        _ => Err("Function body syntax error"),
+    }?;
 
     Ok(Function {
         name: f_name,
@@ -130,17 +119,15 @@ fn parse_function(tokens: &mut Vec<Token>) -> Result<Function, &'static str> {
     })
 }
 
-fn parse_stmts(tokens: &mut Vec<Token>, global: bool) -> StatementsResult {
+fn parse_stmts(tokens: Tokens, global: bool) -> StatementsResult {
     let mut statements: Vec<Box<dyn Statement>> = Vec::new();
     loop {
         match tokens.pop() {
-            Some(t) => match t {
-                Token::CloseBrace => break, // ok, quit
-                t => {
-                    tokens.push(t);
-                    statements.push(parse_one_statement(tokens)?);
-                }
-            },
+            Some(CloseBrace) => break, // ok, quit
+            Some(t) => {
+                tokens.push(t);
+                statements.push(parse_one_statement(tokens)?);
+            }
             None => {
                 if !global {
                     return Err("Unexpected end of statements");
@@ -154,119 +141,104 @@ fn parse_stmts(tokens: &mut Vec<Token>, global: bool) -> StatementsResult {
     Ok(statements)
 }
 
-fn parse_one_statement(tokens: &mut Vec<Token>) -> StatementResult {
+fn parse_one_statement(tokens: Tokens) -> StatementResult {
     let stmt_result: StatementResult = match tokens.pop() {
-        Some(t) => match t {
-            Token::ReturnKeyword => Ok(Box::new(ReturnStatement {
+        Some(ReturnKeyword) => Ok(Box::new(ReturnStatement {
+            expr: parse_expression(tokens)?,
+        })),
+        Some(IntKeyword) => parse_int_statement(tokens),
+        Some(t) => {
+            tokens.push(t);
+            Ok(Box::new(ExprStatement {
                 expr: parse_expression(tokens)?,
-            })),
-            Token::IntKeyword => parse_int_statement_or_function(tokens),
-            t => {
-                tokens.push(t);
-                Ok(Box::new(ExprStatement {
-                    expr: parse_expression(tokens)?
-                }))
-            }
-        },
+            }))
+        }
         None => return Err("Not a statement"),
     };
 
-        match tokens.pop() {
-            Some(t) => match t {
-                Token::Semicolon => stmt_result,
-                _ => Err("(;) expected"),
-            },
-            None => stmt_result,
-        }
+    match tokens.pop() {
+        Some(t) => match t {
+            Semicolon => stmt_result,
+            _ => Err("(;) expected"),
+        },
+        None => stmt_result,
+    }
 }
 
-fn parse_int_statement_or_function(tokens: &mut Vec<Token>) -> StatementResult {
-    let id: String = match tokens.pop() {
-        Some(Token::Identifier(name)) => name,
-        _ => return Err("Expected identifier, got something else")
-    };
+fn parse_int_statement(tokens: Tokens) -> StatementResult {
+    let id = match tokens.pop() {
+        Some(Identifier(name)) => Ok(name),
+        _ => Err("Expected identifier, got something else"),
+    }?;
 
     let expr: Option<Box<dyn Expression>> = match tokens.pop() {
-        Some(Token::Assignment) => Some(parse_expression(tokens)?),
+        Some(Assignment) => Some(parse_expression(tokens)?),
         Some(_) => return Err("Syntax error"),
-        None => None
+        None => None,
     };
 
     Ok(Box::new(DeclareStatement {
         var_name: id,
-        expr: expr
+        expr: expr,
     }))
 }
 
-fn parse_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_expression(tokens: Tokens) -> ExpressionResult {
     match tokens.pop() {
-        Some(Token::Identifier(name)) => {
-            match tokens.pop() {
-                Some(Token::Assignment) => {
-                    Ok(Box::new(AssignExpression {
-                        var_name: name,
-                        expr: parse_expression(tokens)?
-                    }))
-                },
-                Some(t) => {
-                    tokens.push(t);
-                    Ok(Box::new(VarExpression {
-                        var_name: name
-                    }))
-                }
-                _ => Err("Unexpected end of assignment")
+        Some(Identifier(name)) => match tokens.pop() {
+            Some(Assignment) => Ok(Box::new(AssignExpression {
+                var_name: name,
+                expr: parse_expression(tokens)?,
+            })),
+            Some(t) => {
+                tokens.push(t);
+                Ok(Box::new(VarExpression { var_name: name }))
             }
-        }
+            _ => Err("Unexpected end of assignment"),
+        },
         Some(t) => {
             tokens.push(t);
             parse_logical_or_expression(tokens)
         }
-        None => Err("Unexpected end of expression")
+        None => Err("Unexpected end of expression"),
     }
 }
 
-fn parse_logical_or_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
-    parse_rule(tokens, parse_logical_and_expression, |t: &Token| {
-        t == &Token::Or
-    })
+fn parse_logical_or_expression(tokens: Tokens) -> ExpressionResult {
+    parse_rule(tokens, parse_logical_and_expression, |t: &Token| t == &Or)
 }
 
-fn parse_logical_and_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
-    parse_rule(tokens, parse_equality_expression, |t: &Token| {
-        t == &Token::And
-    })
+fn parse_logical_and_expression(tokens: Tokens) -> ExpressionResult {
+    parse_rule(tokens, parse_equality_expression, |t: &Token| t == &And)
 }
 
-fn parse_equality_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_equality_expression(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_relational_expression, |t: &Token| {
-        t == &Token::Equal || t == &Token::NotEqual
+        t == &Equal || t == &NotEqual
     })
 }
 
-fn parse_relational_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_relational_expression(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_additive_expression, |t: &Token| {
-        t == &Token::LessThan
-            || t == &Token::GreaterThan
-            || t == &Token::LessOrEqual
-            || t == &Token::GreaterOrEqual
+        t == &LessThan || t == &GreaterThan || t == &LessOrEqual || t == &GreaterOrEqual
     })
 }
 
-fn parse_additive_expression(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_additive_expression(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_term, |t: &Token| {
-        t == &Token::Addition || t == &Token::Negation
+        t == &Addition || t == &Negation
     })
 }
 
-fn parse_term(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_term(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_factor, |t: &Token| {
-        t == &Token::Multiplication || t == &Token::Division
+        t == &Multiplication || t == &Division
     })
 }
 
-fn parse_rule<F, P>(tokens: &mut Vec<Token>, parse_one: F, predicate: P) -> ExpressionResult
+fn parse_rule<F, P>(tokens: Tokens, parse_one: F, predicate: P) -> ExpressionResult
 where
-    F: Fn(&mut Vec<Token>) -> ExpressionResult,
+    F: Fn(Tokens) -> ExpressionResult,
     P: Fn(&Token) -> bool,
 {
     let mut first = parse_one(tokens)?;
@@ -294,48 +266,48 @@ where
 }
 
 fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
-    match token {
-        &Token::Addition => Ok(BinOpType::Addition),
-        &Token::Multiplication => Ok(BinOpType::Multiplication),
-        &Token::Negation => Ok(BinOpType::Substraction),
-        &Token::Division => Ok(BinOpType::Division),
-        &Token::Or => Ok(BinOpType::Or),
-        &Token::And => Ok(BinOpType::And),
-        &Token::LessThan => Ok(BinOpType::Less),
-        &Token::LessOrEqual => Ok(BinOpType::LessOrEq),
-        &Token::GreaterThan => Ok(BinOpType::Greater),
-        &Token::GreaterOrEqual => Ok(BinOpType::GreaterOrEq),
-        &Token::Equal => Ok(BinOpType::Equal),
-        &Token::NotEqual => Ok(BinOpType::NotEqual),
-        _ => Err("Unknown binary operation"),
-    }
+    Ok(match token {
+        &Addition => BinOpType::Addition,
+        &Multiplication => BinOpType::Multiplication,
+        &Negation => BinOpType::Substraction,
+        &Division => BinOpType::Division,
+        &Or => BinOpType::Or,
+        &And => BinOpType::And,
+        &LessThan => BinOpType::Less,
+        &LessOrEqual => BinOpType::LessOrEq,
+        &GreaterThan => BinOpType::Greater,
+        &GreaterOrEqual => BinOpType::GreaterOrEq,
+        &Equal => BinOpType::Equal,
+        &NotEqual => BinOpType::NotEqual,
+        _ => return Err("Unknown binary operation"),
+    })
 }
 
 fn token_to_unary_op_type(token: &Token) -> Result<UnaryOpType, &'static str> {
-    match token {
-        &Token::BitwiseComplement => Ok(UnaryOpType::Complement),
-        &Token::Negation => Ok(UnaryOpType::Negation),
-        &Token::LogicalNegation => Ok(UnaryOpType::LogicalNegation),
-        _ => Err("Unknown unary operator"),
-    }
+    Ok(match token {
+        &BitwiseComplement => UnaryOpType::Complement,
+        &Negation => UnaryOpType::Negation,
+        &LogicalNegation => UnaryOpType::LogicalNegation,
+        _ => return Err("Unknown unary operator"),
+    })
 }
 
-fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
+fn parse_factor(tokens: Tokens) -> ExpressionResult {
     match tokens.pop() {
         Some(tok) => match tok {
-            Token::ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
-            Token::Negation | Token::BitwiseComplement | Token::LogicalNegation => {
+            ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
+            Negation | BitwiseComplement | LogicalNegation => {
                 let expr = parse_factor(tokens)?;
                 Ok(Box::new(UnaryOpExpression {
                     unary_op_type: token_to_unary_op_type(&tok)?,
                     expression: expr,
                 }))
             }
-            Token::OpenParenthesis => {
+            OpenParenthesis => {
                 let expr = parse_expression(tokens)?;
                 match tokens.pop() {
                     Some(tok) => {
-                        if tok == Token::CloseParenthesis {
+                        if tok == CloseParenthesis {
                             Ok(expr)
                         } else {
                             Err("Missing parenthesis (unexpected token)")
@@ -354,7 +326,6 @@ fn parse_factor(tokens: &mut Vec<Token>) -> ExpressionResult {
 
 #[cfg(test)]
 mod tests {
-    use super::Token::*;
     use super::*;
 
     #[test]
@@ -492,7 +463,7 @@ mod tests {
             ReturnKeyword,
             Identifier(String::from("a")),
             Semicolon,
-            CloseBrace
+            CloseBrace,
         ];
         let expected = Program {
             func: Function {
@@ -500,21 +471,21 @@ mod tests {
                 statements: vec![
                     Box::new(DeclareStatement {
                         var_name: String::from("a"),
-                        expr: Some(Box::new(IntExpression { val: 3 }))
+                        expr: Some(Box::new(IntExpression { val: 3 })),
                     }),
                     Box::new(ExprStatement {
                         expr: Box::new(AssignExpression {
                             var_name: String::from("a"),
-                            expr: Box::new(IntExpression {val: 4})
-                        })
+                            expr: Box::new(IntExpression { val: 4 }),
+                        }),
                     }),
                     Box::new(ReturnStatement {
                         expr: Box::new(VarExpression {
-                            var_name: String::from("a")
-                        })
-                    })
-                ]
-            }
+                            var_name: String::from("a"),
+                        }),
+                    }),
+                ],
+            },
         };
         let ast = parse(tokens).unwrap();
         assert_eq!(ast.to_string(), expected.to_string());
