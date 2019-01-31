@@ -325,63 +325,21 @@ fn parse_factor(tokens: Tokens) -> ExpressionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lexer::tokenize;
 
     #[test]
     fn parse_unary_paren() {
-        let tokens_no_paren: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            Negation,
-            BitwiseComplement,
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
-        let tokens_paren: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            Negation,
-            OpenParenthesis,
-            BitwiseComplement,
-            OpenParenthesis,
-            ConstInt(3),
-            CloseParenthesis,
-            CloseParenthesis,
-            Semicolon,
-            CloseBrace,
-        ];
-        let res_no_paren = parse(tokens_no_paren).unwrap();
-        let res_paren = parse(tokens_paren).unwrap();
-        assert_eq!(res_no_paren.to_string(), res_paren.to_string());
+        let tokens_no_paren = tokenize("int main() { return -!3; }");
+        let tokens_paren = tokenize("int main() { return -(!(3)); }");
+        let ast_no_paren = parse(tokens_no_paren).unwrap();
+        let ast_paren = parse(tokens_paren).unwrap();
+        assert_eq!(ast_no_paren.to_string(), ast_paren.to_string());
     }
 
     #[test]
     fn parse_unary_and_binary_ops_precedence_parens() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            BitwiseComplement,
-            OpenParenthesis,
-            ConstInt(2),
-            Addition,
-            ConstInt(3),
-            CloseParenthesis,
-            Semicolon,
-            CloseBrace,
-        ];
-        let result = parse(tokens).unwrap();
+        let tokens = tokenize("int main() { return ~(2 + 3); }");
+        let ast = parse(tokens).unwrap();
         let expected = Program {
             func: Function {
                 name: String::from("main"),
@@ -397,72 +355,21 @@ mod tests {
                 })],
             },
         };
-        assert_eq!(result.to_string(), expected.to_string());
+        assert_eq!(ast.to_string(), expected.to_string());
     }
 
     #[test]
     fn parse_binary_ops_paren_same_precedence() {
-        let tokens_paren: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            OpenParenthesis,
-            ConstInt(2),
-            Addition,
-            OpenParenthesis,
-            ConstInt(3),
-            Multiplication,
-            ConstInt(4),
-            CloseParenthesis,
-            CloseParenthesis,
-            Semicolon,
-            CloseBrace,
-        ];
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(2),
-            Addition,
-            ConstInt(3),
-            Multiplication,
-            ConstInt(4),
-            Semicolon,
-            CloseBrace,
-        ];
-        let result_paren = parse(tokens_paren).unwrap();
-        let result = parse(tokens).unwrap();
-        assert_eq!(result_paren.to_string(), result.to_string());
+        let tokens_paren = tokenize("int main() { return (2 + (3 * 4)); }");
+        let tokens = tokenize("int main() { return 2 + 3 * 4; }");
+        let ast_paren = parse(tokens_paren).unwrap();
+        let ast = parse(tokens).unwrap();
+        assert_eq!(ast_paren.to_string(), ast.to_string());
     }
 
     #[test]
     fn parse_many_statements() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            IntKeyword,
-            Identifier(String::from("a")),
-            Assignment,
-            ConstInt(3),
-            Semicolon,
-            Identifier(String::from("a")),
-            Assignment,
-            ConstInt(4),
-            Semicolon,
-            ReturnKeyword,
-            Identifier(String::from("a")),
-            Semicolon,
-            CloseBrace,
-        ];
+        let tokens = tokenize("int main() { int a = 3; a = 4; return a; }");
         let expected = Program {
             func: Function {
                 name: String::from("main"),
@@ -492,74 +399,21 @@ mod tests {
     #[test]
     #[should_panic]
     fn parse_missing_paren_func_body() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            Negation,
-            OpenParenthesis,
-            BitwiseComplement,
-            OpenParenthesis,
-            ConstInt(3),
-            // CloseParenthesis,
-            CloseParenthesis,
-            Semicolon,
-            CloseBrace,
-        ];
-        parse(tokens).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn parse_missing_paren_func_params() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            // CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
+        let tokens = tokenize("int main() { return -(~(2); }");
         parse(tokens).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_missing_retval() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            // ConstInt(3),
-            Semicolon,
-            CloseBrace,
-        ];
+        let tokens = tokenize("int main() { return ; }");
         parse(tokens).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_missing_brace() {
-        let tokens: Vec<Token> = vec![
-            IntKeyword,
-            Identifier(String::from("main")),
-            OpenParenthesis,
-            CloseParenthesis,
-            OpenBrace,
-            ReturnKeyword,
-            ConstInt(3),
-            Semicolon,
-            // CloseBrace,
-        ];
+        let tokens = tokenize("int main() {return 3;");
         parse(tokens).unwrap();
     }
 }
