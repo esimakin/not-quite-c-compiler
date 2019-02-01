@@ -201,7 +201,9 @@ fn parse_expression(tokens: Tokens) -> ExpressionResult {
 }
 
 fn parse_logical_or_expression(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_logical_and_expression, |t: &Token| t == &OrTok)
+    parse_rule(tokens, parse_logical_and_expression, |t: &Token| {
+        t == &OrTok
+    })
 }
 
 fn parse_logical_and_expression(tokens: Tokens) -> ExpressionResult {
@@ -221,7 +223,7 @@ fn parse_relational_expression(tokens: Tokens) -> ExpressionResult {
 }
 
 fn parse_additive_expression(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_term, |t: &Token| t == &Plus || t == &Neg)
+    parse_rule(tokens, parse_term, |t: &Token| t == &Plus || t == &Minus)
 }
 
 fn parse_term(tokens: Tokens) -> ExpressionResult {
@@ -261,7 +263,7 @@ fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
     Ok(match token {
         &Plus => Addition,
         &Mul => Multiplication,
-        &Neg => Substraction,
+        &Minus => Substraction,
         &Div => Division,
         &OrTok => Or,
         &AndTok => And,
@@ -448,9 +450,9 @@ mod tests {
                 name: String::from("main"),
                 statements: vec![Box::new(ReturnStatement {
                     expr: Box::new(UnaryOpExpression {
-                        unary_op_type: UnaryOpType::Complement,
+                        unary_op_type: Complement,
                         expr: Box::new(BinOpExpression {
-                            bin_op_type: BinOpType::Addition,
+                            bin_op_type: Addition,
                             left: Box::new(IntExpression { val: 2 }),
                             right: Box::new(IntExpression { val: 3 }),
                         }),
