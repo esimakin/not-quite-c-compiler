@@ -1,5 +1,8 @@
+use self::BinOpType::*;
+use self::UnaryOpType::*;
 use lexer::Token;
 use lexer::Token::*;
+use std::fmt::Display;
 
 pub enum UnaryOpType {
     Complement,
@@ -22,15 +25,11 @@ pub enum BinOpType {
     NotEqual,
 }
 
-pub trait Expression {
+pub trait Visitor {
     fn visit(&self) -> String;
-    fn to_string(&self) -> String;
 }
 
-pub trait Statement {
-    fn visit(&self) -> String;
-    fn to_string(&self) -> String;
-}
+pub trait Node: Visitor + Display {}
 
 pub struct Program {
     pub func: Function,
@@ -38,25 +37,25 @@ pub struct Program {
 
 pub struct Function {
     pub name: String,
-    pub statements: Vec<Box<dyn Statement>>,
+    pub statements: Vec<Box<dyn Node>>,
 }
 
 pub struct ReturnStatement {
-    pub expr: Box<dyn Expression>,
+    pub expr: Box<dyn Node>,
 }
 
 pub struct DeclareStatement {
     pub var_name: String,
-    pub expr: Option<Box<dyn Expression>>,
+    pub expr: Option<Box<dyn Node>>,
 }
 
 pub struct ExprStatement {
-    pub expr: Box<dyn Expression>,
+    pub expr: Box<dyn Node>,
 }
 
 pub struct AssignExpression {
     pub var_name: String,
-    pub expr: Box<dyn Expression>,
+    pub expr: Box<dyn Node>,
 }
 
 pub struct VarExpression {
@@ -65,13 +64,13 @@ pub struct VarExpression {
 
 pub struct BinOpExpression {
     pub bin_op_type: BinOpType,
-    pub left: Box<dyn Expression>,
-    pub right: Box<dyn Expression>,
+    pub left: Box<dyn Node>,
+    pub right: Box<dyn Node>,
 }
 
 pub struct UnaryOpExpression {
     pub unary_op_type: UnaryOpType,
-    pub expression: Box<dyn Expression>,
+    pub expr: Box<dyn Node>,
 }
 
 pub struct IntExpression {
@@ -86,30 +85,30 @@ pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     })
 }
 
-type StatementResult = Result<Box<dyn Statement>, &'static str>;
-type StatementsResult = Result<Vec<Box<dyn Statement>>, &'static str>;
-type ExpressionResult = Result<Box<dyn Expression>, &'static str>;
+type StatementResult = Result<Box<dyn Node>, &'static str>;
+type StatementsResult = Result<Vec<Box<dyn Node>>, &'static str>;
+type ExpressionResult = Result<Box<dyn Node>, &'static str>;
 type Tokens<'a> = &'a mut Vec<Token>;
 
 fn parse_function(tokens: Tokens) -> Result<Function, &'static str> {
     let f_name = match tokens.pop() {
-        Some(IntKeyword) => match tokens.pop() {
-            Some(Identifier(name)) => Ok(name),
+        Some(INT) => match tokens.pop() {
+            Some(ID(name)) => Ok(name),
             _ => Err("Function identifier expected"),
         },
         _ => Err("Unexpected start of function declaration"),
     }?;
 
     match tokens.pop() {
-        Some(OpenParenthesis) => match tokens.pop() {
-            Some(CloseParenthesis) => Ok(CloseParenthesis),
+        Some(LParen) => match tokens.pop() {
+            Some(RParen) => Ok(RParen),
             _ => Err("Syntax error"),
         },
         _ => Err("Syntax error"),
     }?;
 
     let stms = match tokens.pop() {
-        Some(OpenBrace) => Ok(parse_stmts(tokens)?),
+        Some(LBrace) => Ok(parse_stmts(tokens)?),
         _ => Err("Function body syntax error"),
     }?;
 
@@ -120,10 +119,10 @@ fn parse_function(tokens: Tokens) -> Result<Function, &'static str> {
 }
 
 fn parse_stmts(tokens: Tokens) -> StatementsResult {
-    let mut statements: Vec<Box<dyn Statement>> = Vec::new();
+    let mut statements: Vec<Box<dyn Node>> = Vec::new();
     loop {
         match tokens.pop() {
-            Some(CloseBrace) => break, // ok, quit
+            Some(RBrace) => break, // ok, quit
             Some(t) => {
                 tokens.push(t);
                 statements.push(parse_one_statement(tokens)?);
@@ -139,10 +138,10 @@ fn parse_stmts(tokens: Tokens) -> StatementsResult {
 
 fn parse_one_statement(tokens: Tokens) -> StatementResult {
     let stmt_result: StatementResult = match tokens.pop() {
-        Some(ReturnKeyword) => Ok(Box::new(ReturnStatement {
+        Some(RET) => Ok(Box::new(ReturnStatement {
             expr: parse_expression(tokens)?,
         })),
-        Some(IntKeyword) => parse_int_statement(tokens),
+        Some(INT) => parse_int_statement(tokens),
         Some(t) => {
             tokens.push(t);
             Ok(Box::new(ExprStatement {
@@ -154,7 +153,7 @@ fn parse_one_statement(tokens: Tokens) -> StatementResult {
 
     match tokens.pop() {
         Some(t) => match t {
-            Semicolon => stmt_result,
+            Semi => stmt_result,
             _ => Err("Semicolon expected"),
         },
         None => stmt_result,
@@ -163,12 +162,12 @@ fn parse_one_statement(tokens: Tokens) -> StatementResult {
 
 fn parse_int_statement(tokens: Tokens) -> StatementResult {
     let id = match tokens.pop() {
-        Some(Identifier(name)) => Ok(name),
+        Some(ID(name)) => Ok(name),
         _ => Err("Expected identifier, got something else"),
     }?;
 
-    let expr: Option<Box<dyn Expression>> = match tokens.pop() {
-        Some(Assignment) => Some(parse_expression(tokens)?),
+    let expr: Option<Box<dyn Node>> = match tokens.pop() {
+        Some(Assign) => Some(parse_expression(tokens)?),
         Some(_) => return Err("Syntax error"),
         None => None,
     };
@@ -181,14 +180,14 @@ fn parse_int_statement(tokens: Tokens) -> StatementResult {
 
 fn parse_expression(tokens: Tokens) -> ExpressionResult {
     match tokens.pop() {
-        Some(Identifier(name)) => match tokens.pop() {
-            Some(Assignment) => Ok(Box::new(AssignExpression {
+        Some(ID(name)) => match tokens.pop() {
+            Some(Assign) => Ok(Box::new(AssignExpression {
                 var_name: name,
                 expr: parse_expression(tokens)?,
             })),
             Some(t) => {
                 tokens.push(t);
-                tokens.push(Identifier(name));
+                tokens.push(ID(name));
                 parse_logical_or_expression(tokens)
             }
             _ => Err("Unexpected end of assignment"),
@@ -202,35 +201,31 @@ fn parse_expression(tokens: Tokens) -> ExpressionResult {
 }
 
 fn parse_logical_or_expression(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_logical_and_expression, |t: &Token| t == &Or)
+    parse_rule(tokens, parse_logical_and_expression, |t: &Token| t == &OrTok)
 }
 
 fn parse_logical_and_expression(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_equality_expression, |t: &Token| t == &And)
+    parse_rule(tokens, parse_equality_expression, |t: &Token| t == &AndTok)
 }
 
 fn parse_equality_expression(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_relational_expression, |t: &Token| {
-        t == &Equal || t == &NotEqual
+        t == &EqTok || t == &NEq
     })
 }
 
 fn parse_relational_expression(tokens: Tokens) -> ExpressionResult {
     parse_rule(tokens, parse_additive_expression, |t: &Token| {
-        t == &LessThan || t == &GreaterThan || t == &LessOrEqual || t == &GreaterOrEqual
+        t == &Le || t == &Ge || t == &LeQ || t == &GeQ
     })
 }
 
 fn parse_additive_expression(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_term, |t: &Token| {
-        t == &Addition || t == &Negation
-    })
+    parse_rule(tokens, parse_term, |t: &Token| t == &Plus || t == &Neg)
 }
 
 fn parse_term(tokens: Tokens) -> ExpressionResult {
-    parse_rule(tokens, parse_factor, |t: &Token| {
-        t == &Multiplication || t == &Division
-    })
+    parse_rule(tokens, parse_factor, |t: &Token| t == &Mul || t == &Div)
 }
 
 fn parse_rule<F, P>(tokens: Tokens, parse_one: F, predicate: P) -> ExpressionResult
@@ -264,27 +259,27 @@ where
 
 fn token_to_bin_op_type(token: &Token) -> Result<BinOpType, &'static str> {
     Ok(match token {
-        &Addition => BinOpType::Addition,
-        &Multiplication => BinOpType::Multiplication,
-        &Negation => BinOpType::Substraction,
-        &Division => BinOpType::Division,
-        &Or => BinOpType::Or,
-        &And => BinOpType::And,
-        &LessThan => BinOpType::Less,
-        &LessOrEqual => BinOpType::LessOrEq,
-        &GreaterThan => BinOpType::Greater,
-        &GreaterOrEqual => BinOpType::GreaterOrEq,
-        &Equal => BinOpType::Equal,
-        &NotEqual => BinOpType::NotEqual,
+        &Plus => Addition,
+        &Mul => Multiplication,
+        &Neg => Substraction,
+        &Div => Division,
+        &OrTok => Or,
+        &AndTok => And,
+        &Le => Less,
+        &LeQ => LessOrEq,
+        &Ge => Greater,
+        &GeQ => GreaterOrEq,
+        &EqTok => Equal,
+        &NEq => NotEqual,
         _ => return Err("Unknown binary operation"),
     })
 }
 
 fn token_to_unary_op_type(token: &Token) -> Result<UnaryOpType, &'static str> {
     Ok(match token {
-        &BitwiseComplement => UnaryOpType::Complement,
-        &Negation => UnaryOpType::Negation,
-        &LogicalNegation => UnaryOpType::LogicalNegation,
+        &BtwCompl => Complement,
+        &Minus => Negation,
+        &Neg => LogicalNegation,
         _ => return Err("Unknown unary operator"),
     })
 }
@@ -292,19 +287,19 @@ fn token_to_unary_op_type(token: &Token) -> Result<UnaryOpType, &'static str> {
 fn parse_factor(tokens: Tokens) -> ExpressionResult {
     match tokens.pop() {
         Some(tok) => match tok {
-            ConstInt(n) => Ok(Box::new(IntExpression { val: n })),
-            Negation | BitwiseComplement | LogicalNegation => {
+            CInt(n) => Ok(Box::new(IntExpression { val: n })),
+            Neg | BtwCompl | Minus => {
                 let expr = parse_factor(tokens)?;
                 Ok(Box::new(UnaryOpExpression {
                     unary_op_type: token_to_unary_op_type(&tok)?,
-                    expression: expr,
+                    expr: expr,
                 }))
             }
-            OpenParenthesis => {
+            LParen => {
                 let expr = parse_expression(tokens)?;
                 match tokens.pop() {
                     Some(tok) => {
-                        if tok == CloseParenthesis {
+                        if tok == RParen {
                             Ok(expr)
                         } else {
                             Err("Missing parenthesis (unexpected token)")
@@ -313,10 +308,118 @@ fn parse_factor(tokens: Tokens) -> ExpressionResult {
                     None => Err("Missing parenthesis (unexpected end of stream)"),
                 }
             }
-            Identifier(name) => Ok(Box::new(VarExpression { var_name: name })),
+            ID(name) => Ok(Box::new(VarExpression { var_name: name })),
             _ => Err("Expression syntax error"),
         },
         None => Err("Unexpected end of expression"),
+    }
+}
+
+use std::fmt;
+use std::fmt::Formatter;
+
+impl Display for ReturnStatement {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "RET \n    {}", self.expr)
+    }
+}
+impl Node for ReturnStatement {}
+
+impl Display for DeclareStatement {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "DECL {} ", self.var_name)?;
+        match &self.expr {
+            Some(x) => write!(f, "= \n  {}", x),
+            None => write!(f, "\n"),
+        }
+    }
+}
+impl Node for DeclareStatement {}
+
+impl Display for ExprStatement {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}\n", &self.expr)
+    }
+}
+impl Node for ExprStatement {}
+
+impl Display for AssignExpression {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} = \n  {}\n", self.var_name, &self.expr)
+    }
+}
+impl Node for AssignExpression {}
+
+impl Display for VarExpression {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}\n", self.var_name)
+    }
+}
+impl Node for VarExpression {}
+
+impl Display for UnaryOpExpression {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.unary_op_type, &self.expr)
+    }
+}
+impl Node for UnaryOpExpression {}
+
+impl Display for BinOpExpression {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}\n{}\n{}\n", &self.left, self.bin_op_type, &self.right)
+    }
+}
+impl Node for BinOpExpression {}
+
+impl Display for IntExpression {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.val)
+    }
+}
+impl Node for IntExpression {}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "FUNC {}\n", self.name)?;
+        for stmt in self.statements.iter() {
+            try!(write!(f, "  {}\n", stmt));
+        }
+        Ok(())
+    }
+}
+
+impl Display for UnaryOpType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Complement => write!(f, "~"),
+            Negation => write!(f, "-"),
+            LogicalNegation => write!(f, "!"),
+        }
+    }
+}
+
+impl Display for BinOpType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Addition => write!(f, " + "),
+            Multiplication => write!(f, " * "),
+            Substraction => write!(f, " - "),
+            Division => write!(f, " / "),
+            Or => write!(f, " || "),
+            And => write!(f, " && "),
+            Less => write!(f, " < "),
+            LessOrEq => write!(f, " <= "),
+            Greater => write!(f, " > "),
+            GreaterOrEq => write!(f, " >= "),
+            Equal => write!(f, " == "),
+            NotEqual => write!(f, " != "),
+        }
+    }
+}
+
+impl Display for Program {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "PROGRAM\n  {}", &self.func)
     }
 }
 
@@ -346,7 +449,7 @@ mod tests {
                 statements: vec![Box::new(ReturnStatement {
                     expr: Box::new(UnaryOpExpression {
                         unary_op_type: UnaryOpType::Complement,
-                        expression: Box::new(BinOpExpression {
+                        expr: Box::new(BinOpExpression {
                             bin_op_type: BinOpType::Addition,
                             left: Box::new(IntExpression { val: 2 }),
                             right: Box::new(IntExpression { val: 3 }),

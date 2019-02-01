@@ -1,6 +1,6 @@
 use parser::*;
 
-impl Statement for ReturnStatement {
+impl Visitor for ReturnStatement {
     fn visit(&self) -> String {
         let mut val = String::from("");
         val.push_str(&self.expr.visit());
@@ -8,15 +8,9 @@ impl Statement for ReturnStatement {
         val.push_str("\n");
         val
     }
-    fn to_string(&self) -> String {
-        let mut val = String::from("ReturnStatement[");
-        val.push_str(&self.expr.to_string());
-        val.push_str("]");
-        val
-    }
 }
 
-impl Statement for Function {
+impl Visitor for Function {
     fn visit(&self) -> String {
         let mut val = String::from("  .text\n");
         val.push_str("  .globl  main\n");
@@ -27,36 +21,21 @@ impl Statement for Function {
         }
         val
     }
-    fn to_string(&self) -> String {
-        let mut val = String::from("Function[");
-        for stmt in self.statements.iter() {
-            val.push_str(&stmt.to_string());
-            val.push_str(" ");
-        }
-        val.push_str("]");
-        val
-    }
 }
 
-impl Statement for DeclareStatement {
+impl Visitor for DeclareStatement {
     fn visit(&self) -> String {
         String::from("")
     }
-    fn to_string(&self) -> String {
-        String::from("")
-    }
 }
 
-impl Statement for ExprStatement {
+impl Visitor for ExprStatement {
     fn visit(&self) -> String {
         String::from("")
     }
-    fn to_string(&self) -> String {
-        String::from("")
-    }
 }
 
-impl Expression for IntExpression {
+impl Visitor for IntExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
         val.push_str("  movl $");
@@ -64,36 +43,24 @@ impl Expression for IntExpression {
         val.push_str(", %eax\n");
         val
     }
-    fn to_string(&self) -> String {
-        let mut val = String::from("IntExpressioin[");
-        val.push_str(&self.val.to_string());
-        val.push_str("]");
-        val
-    }
 }
 
-impl Expression for AssignExpression {
+impl Visitor for AssignExpression {
     fn visit(&self) -> String {
         String::from("")
     }
-    fn to_string(&self) -> String {
-        String::from("")
-    }
 }
 
-impl Expression for VarExpression {
+impl Visitor for VarExpression {
     fn visit(&self) -> String {
         String::from("")
     }
-    fn to_string(&self) -> String {
-        String::from("")
-    }
 }
 
-impl Expression for UnaryOpExpression {
+impl Visitor for UnaryOpExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
-        val.push_str(&self.expression.visit());
+        val.push_str(&self.expr.visit());
         match self.unary_op_type {
             UnaryOpType::Negation => {
                 val.push_str("  neg %eax\n");
@@ -109,17 +76,11 @@ impl Expression for UnaryOpExpression {
         };
         val
     }
-    fn to_string(&self) -> String {
-        let mut val = String::from("UnaryOp[");
-        val.push_str(self.unary_op_type.to_string());
-        val.push_str("]");
-        val
-    }
 }
 
 use parser::BinOpType::*;
 
-impl Expression for BinOpExpression {
+impl Visitor for BinOpExpression {
     fn visit(&self) -> String {
         let mut val = String::from("");
         match self.bin_op_type {
@@ -193,52 +154,6 @@ impl Expression for BinOpExpression {
                 }
             }
         };
-        val
-    }
-    fn to_string(&self) -> String {
-        let mut val = String::from("BinaryOp[");
-        val.push_str(&self.left.to_string());
-        val.push_str(self.bin_op_type.to_string());
-        val.push_str(&self.right.to_string());
-        val.push_str("]");
-        val
-    }
-}
-
-impl UnaryOpType {
-    fn to_string(&self) -> &'static str {
-        match self {
-            UnaryOpType::Complement => "~",
-            UnaryOpType::Negation => "-",
-            UnaryOpType::LogicalNegation => "!",
-        }
-    }
-}
-
-impl BinOpType {
-    fn to_string(&self) -> &'static str {
-        match self {
-            Addition => "+",
-            Multiplication => "*",
-            Substraction => "-",
-            Division => "/",
-            And => "&&",
-            Or => "||",
-            Less => "<",
-            LessOrEq => "<=",
-            Greater => ">",
-            GreaterOrEq => ">=",
-            Equal => "==",
-            NotEqual => "!=",
-        }
-    }
-}
-
-impl Program {
-    pub fn to_string(&self) -> String {
-        let mut val = String::from("Program[");
-        val.push_str(&self.func.to_string());
-        val.push_str("]");
         val
     }
 }
