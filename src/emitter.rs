@@ -134,7 +134,6 @@ impl Visitor for BinOpExpression {
                 val.push_str("  cmpl $0, %eax\n");
                 val.push_str("  movl $0, %eax\n");
                 val.push_str("  setne %al\n");
-                val.push_str("  %cl, %al\n");
             }
             Less | LessOrEq | Greater | GreaterOrEq | Equal | NotEqual => {
                 val.push_str(&self.left.visit());
