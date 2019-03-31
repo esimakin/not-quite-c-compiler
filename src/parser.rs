@@ -29,7 +29,7 @@ pub trait Visitor {
     fn visit(&self) -> String;
 }
 
-pub trait Node: Visitor + Display {}
+pub trait Node: Visitor + AstDisplay {}
 
 pub struct Program {
     pub func: Function,
@@ -80,9 +80,11 @@ pub struct IntExpression {
 pub fn parse(tokens: Vec<Token>) -> Result<Program, &'static str> {
     let mut tokens = tokens;
     tokens.reverse();
-    Ok(Program {
+    let program = Program {
         func: parse_function(&mut tokens)?,
-    })
+    };
+    println!("{}", program.ast_to_string(0));
+    Ok(program)
 }
 
 type StatementResult = Result<Box<dyn Node>, &'static str>;
@@ -317,112 +319,120 @@ fn parse_factor(tokens: Tokens) -> ExpressionResult {
     }
 }
 
-use std::fmt;
-use std::fmt::Formatter;
-
-impl Display for ReturnStatement {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "RET \n    {}", self.expr)
+impl AstDisplay for ReturnStatement {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for ReturnStatement {}
 
-impl Display for DeclareStatement {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "DECL {} ", self.var_name)?;
-        match &self.expr {
-            Some(x) => write!(f, "= \n  {}", x),
-            None => write!(f, "\n"),
-        }
+impl AstDisplay for DeclareStatement {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for DeclareStatement {}
 
-impl Display for ExprStatement {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}\n", &self.expr)
+impl AstDisplay for ExprStatement {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for ExprStatement {}
 
-impl Display for AssignExpression {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{} = \n  {}\n", self.var_name, &self.expr)
+impl AstDisplay for AssignExpression {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for AssignExpression {}
 
-impl Display for VarExpression {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}\n", self.var_name)
+impl AstDisplay for VarExpression {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for VarExpression {}
 
-impl Display for UnaryOpExpression {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}{}", self.unary_op_type, &self.expr)
+impl AstDisplay for UnaryOpExpression {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for UnaryOpExpression {}
 
-impl Display for BinOpExpression {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}\n{}\n{}\n", &self.left, self.bin_op_type, &self.right)
+impl AstDisplay for BinOpExpression {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for BinOpExpression {}
 
-impl Display for IntExpression {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}", self.val)
+impl AstDisplay for IntExpression {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 impl Node for IntExpression {}
 
-impl Display for Function {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "FUNC {}\n", self.name)?;
-        for stmt in self.statements.iter() {
-            try!(write!(f, "  {}\n", stmt));
-        }
-        Ok(())
+impl AstDisplay for Function {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
+        val
     }
 }
 
-impl Display for UnaryOpType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl AstDisplay for UnaryOpType {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
         match self {
-            Complement => write!(f, "~"),
-            Negation => write!(f, "-"),
-            LogicalNegation => write!(f, "!"),
+            Complement => val.push_str("~"),
+            Negation => val.push_str("-"),
+            LogicalNegation => val.push_str("!"),
         }
+        val
     }
 }
 
-impl Display for BinOpType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl AstDisplay for BinOpType {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("");
         match self {
-            Addition => write!(f, " + "),
-            Multiplication => write!(f, " * "),
-            Substraction => write!(f, " - "),
-            Division => write!(f, " / "),
-            Or => write!(f, " || "),
-            And => write!(f, " && "),
-            Less => write!(f, " < "),
-            LessOrEq => write!(f, " <= "),
-            Greater => write!(f, " > "),
-            GreaterOrEq => write!(f, " >= "),
-            Equal => write!(f, " == "),
-            NotEqual => write!(f, " != "),
+            Addition => val.push_str("+"),
+            Multiplication => val.push_str("*"),
+            Substraction => val.push_str("-"),
+            Division => val.push_str("/"),
+            Or => val.push_str("||"),
+            And => val.push_str("&&"),
+            Less => val.push_str("<"),
+            LessOrEq => val.push_str("<="),
+            Greater => val.push_str(">"),
+            GreaterOrEq => val.push_str(">="),
+            Equal => val.push_str("=="),
+            NotEqual => val.push_str("!="),
         }
+        val
     }
 }
 
-impl Display for Program {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "PROGRAM\n  {}", &self.func)
+impl AstDisplay for Program {
+    fn ast_to_string(&self, depth: u32) -> String {
+        let mut val = String::from("PROGRAM\n");
+        val.push_str(&self.func.ast_to_string(depth + 1));
+        val
     }
+}
+
+trait AstDisplay {
+    fn ast_to_string(&self, depth: u32) -> String;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
