@@ -2,7 +2,6 @@ use self::BinOpType::*;
 use self::UnaryOpType::*;
 use lexer::Token;
 use lexer::Token::*;
-use std::fmt::Display;
 
 pub enum UnaryOpType {
     Complement,
@@ -319,105 +318,128 @@ fn parse_factor(tokens: Tokens) -> ExpressionResult {
     }
 }
 
+impl Node for ReturnStatement {}
+impl Node for DeclareStatement {}
+impl Node for AssignExpression {}
+impl Node for VarExpression {}
+impl Node for UnaryOpExpression {}
+impl Node for BinOpExpression {}
+impl Node for IntExpression {}
+impl Node for ExprStatement {}
+
 impl AstDisplay for ReturnStatement {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("ReturnStmt\n");
+        val.push_str(&self.expr.ast_to_string(depth + 1));
         val
     }
 }
-impl Node for ReturnStatement {}
 
 impl AstDisplay for DeclareStatement {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("DeclareStmt (");
+        val.push_str(&self.var_name.to_string());
+        val.push_str(")\n");
+        match &self.expr {
+            Some(x) => val.push_str(&x.ast_to_string(depth + 1)),
+            None => {}
+        };
         val
     }
 }
-impl Node for DeclareStatement {}
 
 impl AstDisplay for ExprStatement {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("ExprStmt\n");
+        val.push_str(&self.expr.ast_to_string(depth + 1));
         val
     }
 }
-impl Node for ExprStatement {}
 
 impl AstDisplay for AssignExpression {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("AssignExpr (");
+        val.push_str(&self.var_name);
+        val.push_str(")\n");
+        val.push_str(&self.expr.ast_to_string(depth + 1));
         val
     }
 }
-impl Node for AssignExpression {}
 
 impl AstDisplay for VarExpression {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("VarExpr (");
+        val.push_str(&self.var_name);
+        val.push_str(")\n");
         val
     }
 }
-impl Node for VarExpression {}
 
 impl AstDisplay for UnaryOpExpression {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("UnaryOpExpr (");
+        val.push_str(&self.unary_op_type.ast_to_string(0));
+        val.push_str(")\n");
+        val.push_str(&self.expr.ast_to_string(depth + 1));
         val
     }
 }
-impl Node for UnaryOpExpression {}
 
 impl AstDisplay for BinOpExpression {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("BinOpExpr (");
+        val.push_str(&self.bin_op_type.ast_to_string(0));
+        val.push_str(")\n");
+        val.push_str(&self.left.ast_to_string(depth + 1));
+        val.push_str("\n");
+        val.push_str(&self.right.ast_to_string(depth + 1));
         val
     }
 }
-impl Node for BinOpExpression {}
+
+fn apply_depth(val: &mut String, depth: u32) {
+    for _ in 0..depth {
+        val.push_str("  ");
+    }
+}
 
 impl AstDisplay for IntExpression {
     fn ast_to_string(&self, depth: u32) -> String {
         let mut val = String::from("");
+        apply_depth(&mut val, depth);
+        val.push_str("ConstInt (");
+        val.push_str(&self.val.to_string());
+        val.push_str(")");
         val
     }
 }
-impl Node for IntExpression {}
 
 impl AstDisplay for Function {
     fn ast_to_string(&self, depth: u32) -> String {
-        let mut val = String::from("");
-        val
-    }
-}
-
-impl AstDisplay for UnaryOpType {
-    fn ast_to_string(&self, depth: u32) -> String {
-        let mut val = String::from("");
-        match self {
-            Complement => val.push_str("~"),
-            Negation => val.push_str("-"),
-            LogicalNegation => val.push_str("!"),
-        }
-        val
-    }
-}
-
-impl AstDisplay for BinOpType {
-    fn ast_to_string(&self, depth: u32) -> String {
-        let mut val = String::from("");
-        match self {
-            Addition => val.push_str("+"),
-            Multiplication => val.push_str("*"),
-            Substraction => val.push_str("-"),
-            Division => val.push_str("/"),
-            Or => val.push_str("||"),
-            And => val.push_str("&&"),
-            Less => val.push_str("<"),
-            LessOrEq => val.push_str("<="),
-            Greater => val.push_str(">"),
-            GreaterOrEq => val.push_str(">="),
-            Equal => val.push_str("=="),
-            NotEqual => val.push_str("!="),
+        let mut val = String::from("Function (");
+        val.push_str(&self.name);
+        val.push_str(") ->\n");
+        match self.statements.as_slice() {
+            [] => val.push_str("<no statements>"),
+            _ => {
+                for stmt in &self.statements {
+                    val.push_str(&stmt.ast_to_string(depth + 1));
+                }
+            }
         }
         val
     }
@@ -425,13 +447,42 @@ impl AstDisplay for BinOpType {
 
 impl AstDisplay for Program {
     fn ast_to_string(&self, depth: u32) -> String {
-        let mut val = String::from("PROGRAM\n");
-        val.push_str(&self.func.ast_to_string(depth + 1));
+        let mut val = String::from("Program -> ");
+        val.push_str(&self.func.ast_to_string(depth));
         val
     }
 }
 
-trait AstDisplay {
+impl AstDisplay for UnaryOpType {
+    fn ast_to_string(&self, _depth: u32) -> String {
+        match self {
+            Complement => String::from("~"),
+            Negation => String::from("-"),
+            LogicalNegation => String::from("!"),
+        }
+    }
+}
+
+impl AstDisplay for BinOpType {
+    fn ast_to_string(&self, _depth: u32) -> String {
+        match self {
+            Addition => String::from("+"),
+            Multiplication => String::from("*"),
+            Substraction => String::from("-"),
+            Division => String::from("/"),
+            Or => String::from("||"),
+            And => String::from("&&"),
+            Less => String::from("<"),
+            LessOrEq => String::from("<="),
+            Greater => String::from(">"),
+            GreaterOrEq => String::from(">="),
+            Equal => String::from("=="),
+            NotEqual => String::from("!="),
+        }
+    }
+}
+
+pub trait AstDisplay {
     fn ast_to_string(&self, depth: u32) -> String;
 }
 
@@ -443,17 +494,15 @@ mod tests {
     use lexer::tokenize;
 
     #[test]
-    #[ignore]
     fn parse_unary_paren() {
         let tokens_no_paren = tokenize("int main() { return -!3; }");
         let tokens_paren = tokenize("int main() { return -(!(3)); }");
         let ast_no_paren = parse(tokens_no_paren).unwrap();
         let ast_paren = parse(tokens_paren).unwrap();
-        // assert_eq!(ast_no_paren.to_string(), ast_paren.to_string());
+        assert_eq!(ast_no_paren.ast_to_string(0), ast_paren.ast_to_string(0));
     }
 
     #[test]
-    #[ignore]
     fn parse_unary_and_binary_ops_precedence_parens() {
         let tokens = tokenize("int main() { return ~(2 + 3); }");
         let ast = parse(tokens).unwrap();
@@ -472,21 +521,19 @@ mod tests {
                 })],
             },
         };
-        // assert_eq!(ast.to_string(), expected.to_string());
+        assert_eq!(ast.ast_to_string(0), expected.ast_to_string(0));
     }
 
     #[test]
-    #[ignore]
     fn parse_binary_ops_paren_same_precedence() {
         let tokens_paren = tokenize("int main() { return (2 + (3 * 4)); }");
         let tokens = tokenize("int main() { return 2 + 3 * 4; }");
         let ast_paren = parse(tokens_paren).unwrap();
         let ast = parse(tokens).unwrap();
-        // assert_eq!(ast_paren.to_string(), ast.to_string());
+        assert_eq!(ast.ast_to_string(0), ast_paren.ast_to_string(0));
     }
 
     #[test]
-    #[ignore]
     fn parse_many_statements() {
         let tokens = tokenize("int main() { int a = 3; a = 4; return a; }");
         let expected = Program {
@@ -512,7 +559,7 @@ mod tests {
             },
         };
         let ast = parse(tokens).unwrap();
-        // assert_eq!(ast.to_string(), expected.to_string());
+        assert_eq!(ast.ast_to_string(0), expected.ast_to_string(0));
     }
 
     #[test]
