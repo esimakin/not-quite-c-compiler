@@ -333,7 +333,7 @@ impl AstDisplay for ReturnStatement {
         apply_depth(&mut val, depth);
         val.push_str("ReturnStmt\n");
         val.push_str(&self.expr.ast_to_string(depth + 1));
-        val
+        val.trim_end_matches("\n").to_string()
     }
 }
 
@@ -345,9 +345,12 @@ impl AstDisplay for DeclareStatement {
         val.push_str(&self.var_name.to_string());
         val.push_str(")\n");
         match &self.expr {
-            Some(x) => val.push_str(&x.ast_to_string(depth + 1)),
+            Some(x) => {
+                val.push_str(&x.ast_to_string(depth + 1));
+            },
             None => {}
         };
+        val.push_str("\n");
         val
     }
 }
@@ -358,6 +361,7 @@ impl AstDisplay for ExprStatement {
         apply_depth(&mut val, depth);
         val.push_str("ExprStmt\n");
         val.push_str(&self.expr.ast_to_string(depth + 1));
+        val.push_str("\n");
         val
     }
 }
@@ -393,6 +397,7 @@ impl AstDisplay for UnaryOpExpression {
         val.push_str(&self.unary_op_type.ast_to_string(0));
         val.push_str(")\n");
         val.push_str(&self.expr.ast_to_string(depth + 1));
+        val.push_str("\n");
         val
     }
 }
@@ -407,13 +412,14 @@ impl AstDisplay for BinOpExpression {
         val.push_str(&self.left.ast_to_string(depth + 1));
         val.push_str("\n");
         val.push_str(&self.right.ast_to_string(depth + 1));
+        val.push_str("\n");
         val
     }
 }
 
 fn apply_depth(val: &mut String, depth: u32) {
     for _ in 0..depth {
-        val.push_str("  ");
+        val.push_str("    "); // four spaces
     }
 }
 
@@ -506,22 +512,13 @@ mod tests {
     fn parse_unary_and_binary_ops_precedence_parens() {
         let tokens = tokenize("int main() { return ~(2 + 3); }");
         let ast = parse(tokens).unwrap();
-        let expected = Program {
-            func: Function {
-                name: String::from("main"),
-                statements: vec![Box::new(ReturnStatement {
-                    expr: Box::new(UnaryOpExpression {
-                        unary_op_type: Complement,
-                        expr: Box::new(BinOpExpression {
-                            bin_op_type: Addition,
-                            left: Box::new(IntExpression { val: 2 }),
-                            right: Box::new(IntExpression { val: 3 }),
-                        }),
-                    }),
-                })],
-            },
-        };
-        assert_eq!(ast.ast_to_string(0), expected.ast_to_string(0));
+        let expected_ast_str = "Program -> Function (main) ->
+    ReturnStmt
+        UnaryOpExpr (~)
+            BinOpExpr (+)
+                ConstInt (2)
+                ConstInt (3)";
+        assert_eq!(ast.ast_to_string(0), expected_ast_str);
     }
 
     #[test]
@@ -536,30 +533,16 @@ mod tests {
     #[test]
     fn parse_many_statements() {
         let tokens = tokenize("int main() { int a = 3; a = 4; return a; }");
-        let expected = Program {
-            func: Function {
-                name: String::from("main"),
-                statements: vec![
-                    Box::new(DeclareStatement {
-                        var_name: String::from("a"),
-                        expr: Some(Box::new(IntExpression { val: 3 })),
-                    }),
-                    Box::new(ExprStatement {
-                        expr: Box::new(AssignExpression {
-                            var_name: String::from("a"),
-                            expr: Box::new(IntExpression { val: 4 }),
-                        }),
-                    }),
-                    Box::new(ReturnStatement {
-                        expr: Box::new(VarExpression {
-                            var_name: String::from("a"),
-                        }),
-                    }),
-                ],
-            },
-        };
+        let expected_ast_str = "Program -> Function (main) ->
+    DeclareStmt (a)
+        ConstInt (3)
+    ExprStmt
+        AssignExpr (a)
+            ConstInt (4)
+    ReturnStmt
+        VarExpr (a)";
         let ast = parse(tokens).unwrap();
-        assert_eq!(ast.ast_to_string(0), expected.ast_to_string(0));
+        assert_eq!(ast.ast_to_string(0), expected_ast_str);
     }
 
     #[test]
