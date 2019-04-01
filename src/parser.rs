@@ -2,6 +2,7 @@ use self::BinOpType::*;
 use self::UnaryOpType::*;
 use lexer::Token;
 use lexer::Token::*;
+use emitter::Emitter;
 
 pub enum UnaryOpType {
     Complement,
@@ -24,11 +25,7 @@ pub enum BinOpType {
     NotEqual,
 }
 
-pub trait Visitor {
-    fn visit(&self) -> String;
-}
-
-pub trait Node: Visitor + AstDisplay {}
+pub trait Node: Emitter + AstDisplay {}
 
 pub struct Program {
     pub func: Function,

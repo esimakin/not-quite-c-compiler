@@ -1,42 +1,46 @@
 use parser::*;
 
-impl Visitor for ReturnStatement {
-    fn visit(&self) -> String {
+pub trait Emitter {
+    fn asm(&self) -> String;
+}
+
+impl Emitter for ReturnStatement {
+    fn asm(&self) -> String {
         let mut val = String::from("");
-        val.push_str(&self.expr.visit());
+        val.push_str(&self.expr.asm());
         val.push_str("  ret\n");
         val.push_str("\n");
         val
     }
 }
 
-impl Visitor for Function {
-    fn visit(&self) -> String {
+impl Emitter for Function {
+    fn asm(&self) -> String {
         let mut val = String::from("  .text\n");
         val.push_str("  .globl  main\n");
         val.push_str("  .type main, @function\n");
         val.push_str("main:\n");
         for stmt in self.statements.iter() {
-            val.push_str(&stmt.visit());
+            val.push_str(&stmt.asm());
         }
         val
     }
 }
 
-impl Visitor for DeclareStatement {
-    fn visit(&self) -> String {
+impl Emitter for DeclareStatement {
+    fn asm(&self) -> String {
         String::from("")
     }
 }
 
-impl Visitor for ExprStatement {
-    fn visit(&self) -> String {
+impl Emitter for ExprStatement {
+    fn asm(&self) -> String {
         String::from("")
     }
 }
 
-impl Visitor for IntExpression {
-    fn visit(&self) -> String {
+impl Emitter for IntExpression {
+    fn asm(&self) -> String {
         let mut val = String::from("");
         val.push_str("  movl $");
         val.push_str(&self.val.to_string());
@@ -45,22 +49,22 @@ impl Visitor for IntExpression {
     }
 }
 
-impl Visitor for AssignExpression {
-    fn visit(&self) -> String {
+impl Emitter for AssignExpression {
+    fn asm(&self) -> String {
         String::from("")
     }
 }
 
-impl Visitor for VarExpression {
-    fn visit(&self) -> String {
+impl Emitter for VarExpression {
+    fn asm(&self) -> String {
         String::from("")
     }
 }
 
-impl Visitor for UnaryOpExpression {
-    fn visit(&self) -> String {
+impl Emitter for UnaryOpExpression {
+    fn asm(&self) -> String {
         let mut val = String::from("");
-        val.push_str(&self.expr.visit());
+        val.push_str(&self.expr.asm());
         match self.unary_op_type {
             UnaryOpType::Negation => {
                 val.push_str("  neg %eax\n");
@@ -80,54 +84,54 @@ impl Visitor for UnaryOpExpression {
 
 use parser::BinOpType::*;
 
-impl Visitor for BinOpExpression {
-    fn visit(&self) -> String {
+impl Emitter for BinOpExpression {
+    fn asm(&self) -> String {
         let mut val = String::from("");
         match self.bin_op_type {
             Addition => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  addl %ecx, %eax\n");
             }
             Multiplication => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  imul %ecx, %eax\n");
             }
             Substraction => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  movl %eax, %ecx\n");
                 val.push_str("  pop %eax\n");
                 val.push_str("  subl %ecx, %eax\n");
             }
             Division => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  movl %eax, %ecx\n");
                 val.push_str("  pop %eax\n");
                 val.push_str("  movl $0, %edx\n");
                 val.push_str("  idivl %ecx\n");
             }
             Or => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  orl %ecx, %eax\n");
                 val.push_str("  movl $0, %eax\n");
                 val.push_str("  setne %al\n");
             }
             And => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  cmpl $0, %ecx\n");
                 val.push_str("  setne %cl\n");
@@ -136,9 +140,9 @@ impl Visitor for BinOpExpression {
                 val.push_str("  setne %al\n");
             }
             Less | LessOrEq | Greater | GreaterOrEq | Equal | NotEqual => {
-                val.push_str(&self.left.visit());
+                val.push_str(&self.left.asm());
                 val.push_str("  push %eax\n");
-                val.push_str(&self.right.visit());
+                val.push_str(&self.right.asm());
                 val.push_str("  pop %ecx\n");
                 val.push_str("  cmpl $0, %eax\n");
                 val.push_str("  movl $0, %eax\n");
@@ -159,6 +163,6 @@ impl Visitor for BinOpExpression {
 
 pub fn emit(program: Program) -> Result<String, &'static str> {
     let mut asm = String::from("");
-    asm.push_str(&program.func.visit());
+    asm.push_str(&program.func.asm());
     return Ok(asm);
 }
